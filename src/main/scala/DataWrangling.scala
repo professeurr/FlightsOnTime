@@ -146,8 +146,8 @@ object DataWrangling {
 
     airportWeatherData = airportWeatherData.groupBy("FL_ID", "ORIGIN_WEATHER_COND", "DEST_WEATHER_COND")
       .agg(max("FL_ONTIME"))
-      //.agg(collect_list($"ORIGIN_WEATHER_COND").as("ORIGIN_WEATHER_COND"))
-      //.agg(collect_list($"DEST_WEATHER_COND").as("DEST_WEATHER_COND"))
+      .agg(collect_list($"ORIGIN_WEATHER_COND").as("ORIGIN_WEATHER_COND"))
+      .agg(collect_list($"DEST_WEATHER_COND").as("DEST_WEATHER_COND"))
       .cache()
 
     Utils.log(airportWeatherData)
