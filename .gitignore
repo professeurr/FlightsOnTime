@@ -3,3 +3,4 @@ ontime_reporting_2013_12.csv
 /project/
 /.idea/
 /target/
+/src/main/resources/result.txt

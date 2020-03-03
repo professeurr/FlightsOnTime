@@ -6,6 +6,7 @@ import java.text.SimpleDateFormat
 
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
+import org.joda.time.DateTime
 
 object Utils {
   Logger.getLogger("org").setLevel(Level.OFF)
@@ -43,5 +44,9 @@ object Utils {
   def log(df: DataFrame, size: Int = 100): Unit = {
     df.printSchema()
     df.show(numRows = size, truncate = false)
+  }
+
+  def log(str: String): Unit = {
+    println(s"[${DateTime.now()}] $str")
   }
 }
