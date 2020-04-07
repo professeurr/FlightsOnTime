@@ -40,7 +40,7 @@ object DataWrangling {
       .cache()
     //Utils.log(flightsData)
 
-    Utils.log("Normalizing times")
+    Utils.log("Normalizing times...")
     // convert datetimes and normalize them to UTC
     flightsData = flightsData.withColumn("CRS_DEP_TIME", Utils.convertTimeUdf($"FL_DATE", $"CRS_DEP_TIME", $"ORIGIN_TZ"))
       .withColumn("DEP_TIME", Utils.convertTimeUdf($"FL_DATE", $"DEP_TIME", $"ORIGIN_TZ"))
@@ -48,7 +48,7 @@ object DataWrangling {
       .withColumn("ARR_TIME", Utils.convertTimeUdf($"FL_DATE", $"ARR_TIME", $"DEST_TZ"))
       .drop("FL_DATE", "ORIGIN_TZ", "DEST_TZ")
       .cache()
-    //Utils.log(flightsData)
+    Utils.log(flightsData)
 
     Utils.log("Computing the ontime flag")
     // compute OnTime column

@@ -15,11 +15,8 @@ resolvers ++= Seq(
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion % "compile"
   ,"org.apache.spark" %% "spark-sql" % sparkVersion % "compile"
-  //,"org.apache.spark" %% "spark-streaming" % sparkVersion % "compile"
   ,"org.apache.spark" %% "spark-mllib" % sparkVersion % "compile"
-  //,"org.apache.spark" %% "spark-hive" % sparkVersion % "compile"
-  //,"org.apache.spark" %% "spark-yarn" % sparkVersion % "compile"
-  //,"mysql" % "mysql-connector-java" % "5.1.6"
+  ,"org.apache.commons" %% "commons-lang3" % "3.8"
 )
 
 /*

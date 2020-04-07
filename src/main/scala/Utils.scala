@@ -1,11 +1,12 @@
-import org.apache.log4j.{Level, Logger}
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.{DataFrame, SparkSession}
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
 
+import org.apache.commons.lang3.StringUtils
+import org.apache.log4j.{Level, Logger}
+import org.apache.spark.SparkContext
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.joda.time.DateTime
 
 object Utils {
@@ -22,13 +23,8 @@ object Utils {
   val sc: SparkContext = sparkSession.sparkContext
 
   val convertTimeUdf: UserDefinedFunction = udf((date: Timestamp, time: Int, timeZone: Int) => {
-    if (time.toString.length < 4)
-      date
-    else {
-      val hours = time.toString.substring(0, 2).toInt
-      val minutes = time.toString.substring(2, 4).toInt
-      new Timestamp(date.getTime + ((timeZone + hours) * 60 + minutes) * 60000)
-    }
+    val timeStr = StringUtils.leftPad(time.toString, 4, "0")
+    new Timestamp(date.getTime + ((timeZone + timeStr.substring(0, 2).toInt) * 60 + timeStr.substring(2, 4).toInt) * 60000)
   })
 
   val isOnTimeUdf: UserDefinedFunction = udf((th: Double, cd: Double, wd: Double, nasd: Double, sd: Double, ld: Double) => {
