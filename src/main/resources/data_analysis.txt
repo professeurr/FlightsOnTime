@@ -1,0 +1,184 @@
+A/ Données utiles pour normaliser les heures et effectuer les jointures
+=======================================================================
+Nous allons introduire un nouveau jeu de données (Airport_Weather) qui permettra de relier Flight et Weather via FL_ORIGIN, FL_DEST et WEATHER_WBAN.
+    Airport_Weather: (AirportID, WBAN, TimeZone)
+        - TimeZone sera utilisé pour normaliser les heures en format UTC.
+        - AirportID et WBAN sont utilisés pour effectuer la jointure entre les données de vols et celles de la météo
+
+
+B/ Traitement des données de vols
+=================================
+
+Téléchargement des données
+--------------------------
+Nous allons récupérer données de vols avec les champs suivants depuis le site https://www.transtats.bts.gov/DL_SelectFields.asp?Table_ID=236&DB_Short_Name=On-Time.
+Ces champs sont utiles pour l'analyse.
+
+FlightDate, DOT_ID_Reporting_Airline, Flight_Number_Reporting_Airline,
+OriginAirportID, DestAirportID, CRSDepTime, ArrDelayMinutes,
+Cancelled, Diverted, CRSElapsedTime, WeatherDelay, NASDelay
+
+    OP_CARRIER_AIRLINE_ID: l'ID de la compagnie aérienne
+    OP_CARRIER_FL_NUM: le numéro de vol
+    FL_DATE: la date du vol
+    ORIGIN_AIRPORT_ID: l'ID de l'aéroport de départ. Il servira à faire la jointure avec les données météo.
+    DEST_AIRPORT_ID: l'ID de l'aéroport d'arrivée. Il servira à faire la jointure avec les données météo.
+    CRS_DEP_TIME: l'heure de départ initialement prévue
+    CRS_ELAPSED_TIME: le temps de vol initialement prévu (en minutes). Il sera utilisé pour calculé l'heure d'arrivée initialement prévue en respectant le décalage horaire
+    ARR_DELAY_NEW: retard à l'arrivée en minutes (0 = à l'heure)
+    WEATHER_DELAY: retard (en minutes) dû à la météo
+    NAS_DELAY: retard (en minutes) dû au NAS mais amputé à la météo
+    CANCELLED: indique si le vol a été annulé ou non. Les vols annulés seront supprimés
+    DIVERTED: indique si le vol a été dévié ou non. Les vols déviés seront supprimés
+
+Variables d'analyse
+-------------------
+    Threshold_Time: temps limite d'arrivée au delà duquel le vol est considéré comme en retard (15min par défaut)
+
+Filtrage des données
+--------------------
+Les données suivantes doivent être supprimées:
+    CANCELLED = 1. Les vols annulés ne sont pas inclus dans cette analyse
+    DIVERTED = 1. Les vols déviés ne sont pas inclus dans cette analyse
+    [ARR_DELAY_NEW > Threshold_Time] && WEATHER_DELAY < Threshold_Time && NAS_DELAY < Threshold_Time.
+        Les retards dus à des causes autres que météorologiques ne sont pas inclus dans cette analyse
+
+Les données à recalculer
+------------------------
+FL_ID: l'identifiant d'un vol est composé de:
+    <OP_CARRIER_AIRLINE_ID>_<FL_DATE>_<ORIGIN_AIRPORT_ID>_<DEST_AIRPORT_ID>_<OP_CARRIER_FL_NUM>
+    cette composition permet une meilleur répartition des données par spark pour réaliser les opérations de jointures
+        - agrégation des données météorologiques d'un même vol.
+        - jointure des données météo avec celles des aéroports.
+
+FL_ONTIME: le flag qui indique si un vol est en retard ou non et si ce retard est emputable à la météo.
+    FL_ONTIME = 0 (retard) si:
+        - ARR_DELAY_NEW > Threshold_Time
+        - et (WEATHER_DELAY > Threshold_Time ou NAS_DELAY > Threshold_Time)
+
+Il faut faire a jointure avec les données Airport_Weather pour récupérer TimeZone:
+    Flight.ORIGIN_AIRPORT_ID == Airport_Weather.AirportId
+FL_CRS_DEP_TIME: l'heure de départ du vol en UTC = FL_DATE + (CRS_DEP_TIME - TimeZone)
+FL_CRS_ARR_TIME: l'heure d'arrivée du vol en UTC = FL_CRS_DEP_TIME + CRS_ELAPSED_TIME
+
+Les données de vols retenues pour l'analyse:
+--------------------------------------------
+    Flight: (FL_ID, FL_ONTIME, FL_CRS_DEP_TIME, FL_CRS_ARR_TIME, ORIGIN_AIRPORT_ID, DEST_AIRPORT_ID)
+
+
+C/ Traitement des données météorologiques
+=========================================
+
+Téléchargement des données
+--------------------------
+Nous allons récupérer données de météo avec les champs suivants depuis le site https://www.ncdc.noaa.gov/orders/qclcd/.
+Ces champs sont utiles pour l'analyse.
+
+    WBAN: l'identifiant de la station  d'enregistrement
+    Date: la date de l'enregistrement
+    Time: l'heure (locale) de l'enregistrement
+    DryBulbCelsius: température. (Température en °C)
+    RelativeHumidity: humidité.  (Nombre et M)
+    WindDirection: direction du vent (Nombre, M, VR et blank)
+    WindSpeed: la vitesse du vent (Nombre, M et blank)
+    StationPressure: la pression atmosphérique (Nombre et M)
+    Visibility: la visibilité ambiante. (Nombre et M)
+
+Les champs suivants ne seront pas inclus dans notre première analyse car ils nécessitent des traitements particuliers.
+    WeatherType: le phéomène météorologique. (Une combinaison de codes).
+    SkyCondition: l'état du ciel. (Un combinaison de codes)
+
+Filtrage des données
+--------------------
+Les données météorologiques manquantes (M, blank) seront remplacées par des données les plus récéentes.
+Après ce remplissage, les données qui auront encore des valeurs manquantes seront supprimées.
+
+Les données à recalculer
+------------------------
+WindDirection: ce champ doit être transformée en catégorie (bucket de directions: N, NO, O, SO, S, SE, E, NE, VR, AB).
+               Ensuite le résultat sera transformé en vecteur en utilisant StringIndex
+
+WEATHER_CONDITION: est obtenu en combinant les conditions météorologiques (WindDirection, DryBulbCelsius, RelativeHumidity,
+                    WindSpeed, StationPressure, Visibility) en utilisant VectorAssembler
+
+Il faut faire a jointure avec les données Airport_Weather pour récupérer TimeZone:
+    Weather.WBAN == Airport_Weather.WBAN
+WEATHER_TIME: date et heure d'enregistrement Date et Time. Cette valeur est convertie en UTC = Date + (Time - TimeZone)
+
+Les données de vols retenues pour l'analyse:
+--------------------------------------------
+    Wather: (WBAN, WEATHER_TIME, WEATHER_CONDITION)
+
+
+C/ Combinaison des données de vols et de météo
+==============================================
+
+Jointure des données
+--------------------
+Nous disposons à ce stade de deux jeux de données:
+    Flight: (FL_ID, FL_ONTIME, FL_CRS_DEP_TIME, FL_CRS_ARR_TIME, ORIGIN_AIRPORT_ID, DEST_AIRPORT_ID)
+    Weather: (WBAN, WEATHER_TIME, WEATHER_CONDITION)
+
+Nous allons créer deux nouveaux jeux de données:
+    Flight_Weather_Origine: la jointure des vols et des conditions météorologiques au départ des vols
+        Flight.FL_ORIGIN_AIRPORT_ID == Airport_Weather.AirportId && Weather.WEATHER_WBAN == Airport_Weather.WBAN
+        Flight_Weather_Origine: (FL_ID, FL_ONTIME, FL_CRS_DEP_TIME, WEATHER_TIME, WEATHER_CONDITION)
+    Flight_Weather_Dest: la jointure des vols et des conditions météorologiques à l'arrivée des vols
+        Flight.FL_DEST_AIRPORT_ID == Airport_Weather.AirportId && Weather.WEATHER_WBAN == Airport_Weather.WBAN
+        Flight_Weather_Dest: (FL_ID, FL_ONTIME, FL_CRS_ARR_TIME, WEATHER_TIME, WEATHER_CONDITION)
+
+Variables d'analyse
+-------------------
+    Weather_Time_Frame: durée sur laquelle l'analyse météorologique doit être faite (12h par défaut)
+
+Traitement des données météo assignées aux vols
+-----------------------------------------------
+Pour notre analyse, nous allons récupérer pour chaque vol, les enregistrements météo effectués 12h
+avant le départ prévu du vol et 12h avant l'arrivée prévue.
+
+Nous remarquons par ailleurs que Flight_Weather_Origine et Flight_Weather_Dest ont la même structure de donnée:
+    Flight_Weather: (FL_ID, FL_ONTIME, FL_CRS_TIME, WEATHER_TIME, WEATHER_CONDITION)
+C'est cette structure que nous allons utiliser par la suite.
+Nous allons faire un partitionBy sur FL_ID afin de mieux répartir les données sur le cluster. La nomenclature de FL_ID est
+adaptée à cette répartition
+
+Nous allons maintenant réaliser le "fill forward" des données météo manquantes:
+    1) Regroupement des heures d'enregistrement météo relatives à chaque vol (FL_ID):
+        Flight_Weather_Timeserie = Flight_Weather.groupBy(FL_ID, "inner")
+            - max(FL_CRS_TIME) as FL_CRS_TIME
+            - collect(WEATHER_TIME) as WEATHER_TIMESERIE: une liste de WEATHER_TIME jusqu'à 12h
+
+    2) Utilisation d'une UDF qui prend en arguments FL_CRS_TIME et WEATHER_TIMESERIE (ordonnée par ordre décroissant)
+        cette function renvoie un tableau de 12 dates correspondant aux enregistrements existants.
+        Si une donnée n'existe pas pour une heure donnée, on prend l'enregistrement précédent.
+
+    3) Dégroupement des timeseries
+        Flight_Weather_Timeserie = Flight_Weather_Timeserie.explode(WEATHER_TIMESERIE) as WEATHER_TIME
+            (FL_ID, FL_CRS_TIME, WEATHER_TIMESERIE)
+
+    4) Association des conditions météo à chaque heure en utilisant une jointure sur FL_ID et WEATHER_TIME
+        Flight_Weather: Flight_Weather_Timeserie.FL_ID = Flight_Weather.FL_ID && Flight_Weather_Timeserie.WEATHER_TIME == Flight_Weather.WEATHER_TIME
+
+    5) Regroupement des données météo relatives à chaque vol (FL_ID):
+        Flight_Weather_Condition = Flight_Weather.groupBy(FL_ID, "inner")
+                    - max(FL_ONTIME) as FL_ONTIME
+                    - collect(WEATHER_CONDITION) as WEATHER_CONDITION: une liste de WEATHER_CONDITION jusqu'à 12h
+        Flight_Weather_Condition: (FL_ID, FL_ONTIME, WEATHER_CONDITION)
+
+Nous allons combiner les données d'origine avec celles d'arrivée sur FL_ID
+    Flight_OnTime = Flight_Weather_Condition_Origine.join(Flight_Weather_Condition_Dest).on(FL_ID)
+    Flight_OnTime: (FL_ONTIME, WEATHER_CONDITION_ORIGIN, WEATHER_CONDITION_DEST)
+
+
+D/ Modélisation
+===============
+
+
+
+
+
+
+
+
+
+

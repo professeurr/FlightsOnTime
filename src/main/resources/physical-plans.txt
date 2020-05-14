@@ -1,0 +1,459 @@
+[2020-05-10T16:33:25.178+02:00] START
+[2020-05-10T16:33:25.433+02:00] Loading relationship data between weather and airport data
+root
+ |-- AirportID: string (nullable = true)
+ |-- JOIN_WBAN: string (nullable = true)
+ |-- TimeZone: long (nullable = true)
+
+== Physical Plan ==
+*(1) Project [AirportID#0, WBAN#1 AS JOIN_WBAN#10, (TimeZone#2L * 3600) AS TimeZone#6L]
++- *(1) FileScan csv [AirportID#0,WBAN#1,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<AirportID:string,WBAN:string,TimeZone:bigint>
+[2020-05-10T16:33:25.944+02:00] Loading flights data
+root
+ |-- FL_DATE: string (nullable = true)
+ |-- OP_CARRIER_AIRLINE_ID: string (nullable = true)
+ |-- OP_CARRIER_FL_NUM: string (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- CRS_DEP_TIME: string (nullable = true)
+ |-- ARR_DELAY_NEW: string (nullable = true)
+ |-- CANCELLED: string (nullable = true)
+ |-- DIVERTED: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- WEATHER_DELAY: string (nullable = true)
+ |-- NAS_DELAY: string (nullable = true)
+ |-- _c12: string (nullable = true)
+
+== Physical Plan ==
+*(1) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36,_c12#37] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+[2020-05-10T16:33:27.140+02:00] Removing cancelled, diverted and non-weather related delay records
+root
+ |-- FL_DATE: string (nullable = true)
+ |-- OP_CARRIER_AIRLINE_ID: string (nullable = true)
+ |-- OP_CARRIER_FL_NUM: string (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- CRS_DEP_TIME: string (nullable = true)
+ |-- ARR_DELAY_NEW: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- WEATHER_DELAY: string (nullable = true)
+ |-- NAS_DELAY: string (nullable = true)
+ |-- _c12: string (nullable = true)
+
+== Physical Plan ==
+*(1) Project [FL_DATE#25, OP_CARRIER_AIRLINE_ID#26, OP_CARRIER_FL_NUM#27, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_DEP_TIME#30, ARR_DELAY_NEW#31, CRS_ELAPSED_TIME#34, WEATHER_DELAY#35, NAS_DELAY#36, _c12#37]
++- *(1) Filter ((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15)))
+   +- *(1) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36,_c12#37] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1)))], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+[2020-05-10T16:33:27.369+02:00] computing FL_ID
+root
+ |-- FL_DATE: long (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- ARR_DELAY_NEW: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- WEATHER_DELAY: string (nullable = true)
+ |-- NAS_DELAY: string (nullable = true)
+ |-- FL_ID: string (nullable = false)
+
+== Physical Plan ==
+*(1) Project [unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) AS FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, ARR_DELAY_NEW#31, CRS_ELAPSED_TIME#34, WEATHER_DELAY#35, NAS_DELAY#36, concat_ws(_, OP_CARRIER_AIRLINE_ID#26, cast(unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) as string), ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, OP_CARRIER_FL_NUM#27) AS FL_ID#85]
++- *(1) Filter ((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15)))
+   +- *(1) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1)))], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+[2020-05-10T16:33:27.474+02:00] computing FL_ONTIME
+root
+ |-- FL_DATE: long (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+
+== Physical Plan ==
+*(1) Project [unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) AS FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, concat_ws(_, OP_CARRIER_AIRLINE_ID#26, cast(unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) as string), ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, OP_CARRIER_FL_NUM#27) AS FL_ID#85, cast(((cast(ARR_DELAY_NEW#31 as int) <= 15) || ((cast(WEATHER_DELAY#35 as int) <= 15) && (cast(NAS_DELAY#36 as int) <= 15))) as int) AS FL_ONTIME#105]
++- *(1) Filter ((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15)))
+   +- *(1) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1)))], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+[2020-05-10T16:33:27.583+02:00] getting timezones of each airport
+root
+ |-- FL_DATE: long (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- TimeZone: long (nullable = true)
+
+== Physical Plan ==
+*(2) Project [FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, FL_ID#85, FL_ONTIME#105, TimeZone#6L]
++- *(2) BroadcastHashJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, BuildRight
+   :- *(2) Project [unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) AS FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, concat_ws(_, OP_CARRIER_AIRLINE_ID#26, cast(unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) as string), ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, OP_CARRIER_FL_NUM#27) AS FL_ID#85, cast(((cast(ARR_DELAY_NEW#31 as int) <= 15) || ((cast(WEATHER_DELAY#35 as int) <= 15) && (cast(NAS_DELAY#36 as int) <= 15))) as int) AS FL_ONTIME#105]
+   :  +- *(2) Filter (((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15))) && isnotnull(ORIGIN_AIRPORT_ID#28))
+   :     +- *(2) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1))), IsNotNull(ORIGIN_AIRPORT_ID)], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, string, true]))
+      +- *(1) Project [AirportID#0, (TimeZone#2L * 3600) AS TimeZone#6L]
+         +- *(1) Filter isnotnull(AirportId#0)
+            +- *(1) FileScan csv [AirportID#0,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(AirportID)], ReadSchema: struct<AirportID:string,TimeZone:bigint>
+[2020-05-10T16:33:27.733+02:00] normalizing times to UTC: FL_CRS_DEP_TIME, FL_CRS_ARR_TIME
+root
+ |-- FL_DATE: long (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- TimeZone: long (nullable = true)
+ |-- FL_CRS_DEP_TIME: long (nullable = true)
+ |-- FL_CRS_ARR_TIME: double (nullable = true)
+
+== Physical Plan ==
+*(2) Project [FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, FL_ID#85, FL_ONTIME#105, TimeZone#6L, (FL_DATE#64L - TimeZone#6L) AS FL_CRS_DEP_TIME#157L, (cast((FL_DATE#64L - TimeZone#6L) as double) + cast(CRS_ELAPSED_TIME#34 as double)) AS FL_CRS_ARR_TIME#166]
++- *(2) BroadcastHashJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, BuildRight
+   :- *(2) Project [unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) AS FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, concat_ws(_, OP_CARRIER_AIRLINE_ID#26, cast(unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) as string), ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, OP_CARRIER_FL_NUM#27) AS FL_ID#85, cast(((cast(ARR_DELAY_NEW#31 as int) <= 15) || ((cast(WEATHER_DELAY#35 as int) <= 15) && (cast(NAS_DELAY#36 as int) <= 15))) as int) AS FL_ONTIME#105]
+   :  +- *(2) Filter (((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15))) && isnotnull(ORIGIN_AIRPORT_ID#28))
+   :     +- *(2) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1))), IsNotNull(ORIGIN_AIRPORT_ID)], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, string, true]))
+      +- *(1) Project [AirportID#0, (TimeZone#2L * 3600) AS TimeZone#6L]
+         +- *(1) Filter isnotnull(AirportId#0)
+            +- *(1) FileScan csv [AirportID#0,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(AirportID)], ReadSchema: struct<AirportID:string,TimeZone:bigint>
+[2020-05-10T16:33:27.811+02:00] selecting useful columns
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- FL_CRS_DEP_TIME: long (nullable = true)
+ |-- FL_CRS_ARR_TIME: double (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+
+== Physical Plan ==
+*(2) Project [FL_ID#85, FL_ONTIME#105, (FL_DATE#64L - TimeZone#6L) AS FL_CRS_DEP_TIME#157L, (cast((FL_DATE#64L - TimeZone#6L) as double) + cast(CRS_ELAPSED_TIME#34 as double)) AS FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29]
++- *(2) BroadcastHashJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, BuildRight
+   :- *(2) Project [unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) AS FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, concat_ws(_, OP_CARRIER_AIRLINE_ID#26, cast(unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) as string), ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, OP_CARRIER_FL_NUM#27) AS FL_ID#85, cast(((cast(ARR_DELAY_NEW#31 as int) <= 15) || ((cast(WEATHER_DELAY#35 as int) <= 15) && (cast(NAS_DELAY#36 as int) <= 15))) as int) AS FL_ONTIME#105]
+   :  +- *(2) Filter (((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15))) && isnotnull(ORIGIN_AIRPORT_ID#28))
+   :     +- *(2) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1))), IsNotNull(ORIGIN_AIRPORT_ID)], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, string, true]))
+      +- *(1) Project [AirportID#0, (TimeZone#2L * 3600) AS TimeZone#6L]
+         +- *(1) Filter isnotnull(AirportId#0)
+            +- *(1) FileScan csv [AirportID#0,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(AirportID)], ReadSchema: struct<AirportID:string,TimeZone:bigint>
+[2020-05-10T16:33:27.961+02:00] Loading weather data
+root
+ |-- WBAN: string (nullable = true)
+ |-- Date: string (nullable = true)
+ |-- Time: string (nullable = true)
+ |-- RelativeHumidity: string (nullable = true)
+ |-- DryBulbCelsius: string (nullable = true)
+ |-- WindSpeed: string (nullable = true)
+ |-- StationPressure: string (nullable = true)
+ |-- Visibility: string (nullable = true)
+ |-- WindDirection: string (nullable = true)
+
+== Physical Plan ==
+*(1) Project [WBAN#224, Date#225, Time#226, RelativeHumidity#246, DryBulbCelsius#236, WindSpeed#248, StationPressure#254, Visibility#230, WindDirection#250]
++- *(1) FileScan csv [WBAN#224,Date#225,Time#226,Visibility#230,DryBulbCelsius#236,RelativeHumidity#246,WindSpeed#248,WindDirection#250,StationPressure#254] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<WBAN:string,Date:string,Time:string,Visibility:string,DryBulbCelsius:string,RelativeHumidi...
+[2020-05-10T16:33:28.231+02:00] cast variables to double
+[2020-05-10T16:33:28.324+02:00] transform WindDirection to categorical
+root
+ |-- WBAN: string (nullable = true)
+ |-- Date: string (nullable = true)
+ |-- Time: string (nullable = true)
+ |-- RelativeHumidity: string (nullable = true)
+ |-- DryBulbCelsius: string (nullable = true)
+ |-- WindSpeed: string (nullable = true)
+ |-- StationPressure: string (nullable = true)
+ |-- Visibility: string (nullable = true)
+ |-- WindDirection: string (nullable = true)
+
+== Physical Plan ==
+*(1) Project [WBAN#224, Date#225, Time#226, CASE WHEN ((trim(RelativeHumidity#246, None) = ) || (RelativeHumidity#246 = M)) THEN null ELSE RelativeHumidity#246 END AS RelativeHumidity#323, CASE WHEN ((trim(DryBulbCelsius#236, None) = ) || (DryBulbCelsius#236 = M)) THEN null ELSE DryBulbCelsius#236 END AS DryBulbCelsius#333, CASE WHEN ((trim(WindSpeed#248, None) = ) || (WindSpeed#248 = M)) THEN null ELSE WindSpeed#248 END AS WindSpeed#343, CASE WHEN ((trim(StationPressure#254, None) = ) || (StationPressure#254 = M)) THEN null ELSE StationPressure#254 END AS StationPressure#353, CASE WHEN ((trim(Visibility#230, None) = ) || (Visibility#230 = M)) THEN null ELSE Visibility#230 END AS Visibility#363, CASE WHEN (if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) = 10.0) THEN W2 ELSE concat(W, cast(cast(if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) as int) as string)) END AS WindDirection#404]
++- *(1) FileScan csv [WBAN#224,Date#225,Time#226,Visibility#230,DryBulbCelsius#236,RelativeHumidity#246,WindSpeed#248,WindDirection#250,StationPressure#254] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<WBAN:string,Date:string,Time:string,Visibility:string,DryBulbCelsius:string,RelativeHumidi...
+[2020-05-10T16:33:28.456+02:00] assembling weather conditions
+root
+ |-- WBAN: string (nullable = true)
+ |-- Date: string (nullable = true)
+ |-- Time: string (nullable = true)
+ |-- WEATHER_COND: array (nullable = false)
+ |    |-- element: string (containsNull = true)
+
+== Physical Plan ==
+*(1) Project [WBAN#224, Date#225, Time#226, array(CASE WHEN ((trim(RelativeHumidity#246, None) = ) || (RelativeHumidity#246 = M)) THEN null ELSE RelativeHumidity#246 END, CASE WHEN ((trim(DryBulbCelsius#236, None) = ) || (DryBulbCelsius#236 = M)) THEN null ELSE DryBulbCelsius#236 END, CASE WHEN ((trim(WindSpeed#248, None) = ) || (WindSpeed#248 = M)) THEN null ELSE WindSpeed#248 END, CASE WHEN ((trim(StationPressure#254, None) = ) || (StationPressure#254 = M)) THEN null ELSE StationPressure#254 END, CASE WHEN ((trim(Visibility#230, None) = ) || (Visibility#230 = M)) THEN null ELSE Visibility#230 END, CASE WHEN (if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) = 10.0) THEN W2 ELSE concat(W, cast(cast(if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) as int) as string)) END) AS WEATHER_COND#426]
++- *(1) FileScan csv [WBAN#224,Date#225,Time#226,Visibility#230,DryBulbCelsius#236,RelativeHumidity#246,WindSpeed#248,WindDirection#250,StationPressure#254] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<WBAN:string,Date:string,Time:string,Visibility:string,DryBulbCelsius:string,RelativeHumidi...
+[2020-05-10T16:33:28.524+02:00] getting timezones of each station and normalizing weather time
+root
+ |-- WBAN: string (nullable = true)
+ |-- Date: long (nullable = true)
+ |-- WEATHER_COND: array (nullable = false)
+ |    |-- element: string (containsNull = true)
+ |-- AirportID: string (nullable = true)
+ |-- TimeZone: long (nullable = true)
+ |-- WEATHER_TIME: long (nullable = true)
+
+== Physical Plan ==
+*(2) Project [WBAN#224, Date#443L, WEATHER_COND#426, AirportID#0, TimeZone#6L, (Date#443L - TimeZone#6L) AS WEATHER_TIME#474L]
++- *(2) BroadcastHashJoin [WBAN#224], [JOIN_WBAN#10], Inner, BuildRight
+   :- *(2) Project [WBAN#224, unix_timestamp(concat_ws(, Date#225, Time#226), yyyyMMddHHmm, Some(Europe/Paris)) AS Date#443L, array(CASE WHEN ((trim(RelativeHumidity#246, None) = ) || (RelativeHumidity#246 = M)) THEN null ELSE RelativeHumidity#246 END, CASE WHEN ((trim(DryBulbCelsius#236, None) = ) || (DryBulbCelsius#236 = M)) THEN null ELSE DryBulbCelsius#236 END, CASE WHEN ((trim(WindSpeed#248, None) = ) || (WindSpeed#248 = M)) THEN null ELSE WindSpeed#248 END, CASE WHEN ((trim(StationPressure#254, None) = ) || (StationPressure#254 = M)) THEN null ELSE StationPressure#254 END, CASE WHEN ((trim(Visibility#230, None) = ) || (Visibility#230 = M)) THEN null ELSE Visibility#230 END, CASE WHEN (if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) = 10.0) THEN W2 ELSE concat(W, cast(cast(if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) as int) as string)) END) AS WEATHER_COND#426]
+   :  +- *(2) Filter isnotnull(WBAN#224)
+   :     +- *(2) FileScan csv [WBAN#224,Date#225,Time#226,Visibility#230,DryBulbCelsius#236,RelativeHumidity#246,WindSpeed#248,WindDirection#250,StationPressure#254] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<WBAN:string,Date:string,Time:string,Visibility:string,DryBulbCelsius:string,RelativeHumidi...
+   +- BroadcastExchange HashedRelationBroadcastMode(List(input[1, string, true]))
+      +- *(1) Project [AirportID#0, WBAN#1 AS JOIN_WBAN#10, (TimeZone#2L * 3600) AS TimeZone#6L]
+         +- *(1) Filter isnotnull(WBAN#1)
+            +- *(1) FileScan csv [AirportID#0,WBAN#1,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<AirportID:string,WBAN:string,TimeZone:bigint>
+[2020-05-10T16:33:28.611+02:00] selecting useful columns
+root
+ |-- AirportID: string (nullable = true)
+ |-- WEATHER_TIME: long (nullable = true)
+ |-- WEATHER_COND: array (nullable = false)
+ |    |-- element: string (containsNull = true)
+
+== Physical Plan ==
+*(2) Project [AirportID#0, (Date#443L - TimeZone#6L) AS WEATHER_TIME#474L, WEATHER_COND#426]
++- *(2) BroadcastHashJoin [WBAN#224], [JOIN_WBAN#10], Inner, BuildRight
+   :- *(2) Project [WBAN#224, unix_timestamp(concat_ws(, Date#225, Time#226), yyyyMMddHHmm, Some(Europe/Paris)) AS Date#443L, array(CASE WHEN ((trim(RelativeHumidity#246, None) = ) || (RelativeHumidity#246 = M)) THEN null ELSE RelativeHumidity#246 END, CASE WHEN ((trim(DryBulbCelsius#236, None) = ) || (DryBulbCelsius#236 = M)) THEN null ELSE DryBulbCelsius#236 END, CASE WHEN ((trim(WindSpeed#248, None) = ) || (WindSpeed#248 = M)) THEN null ELSE WindSpeed#248 END, CASE WHEN ((trim(StationPressure#254, None) = ) || (StationPressure#254 = M)) THEN null ELSE StationPressure#254 END, CASE WHEN ((trim(Visibility#230, None) = ) || (Visibility#230 = M)) THEN null ELSE Visibility#230 END, CASE WHEN (if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) = 10.0) THEN W2 ELSE concat(W, cast(cast(if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) as int) as string)) END) AS WEATHER_COND#426]
+   :  +- *(2) Filter isnotnull(WBAN#224)
+   :     +- *(2) FileScan csv [WBAN#224,Date#225,Time#226,Visibility#230,DryBulbCelsius#236,RelativeHumidity#246,WindSpeed#248,WindDirection#250,StationPressure#254] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<WBAN:string,Date:string,Time:string,Visibility:string,DryBulbCelsius:string,RelativeHumidi...
+   +- BroadcastExchange HashedRelationBroadcastMode(List(input[1, string, true]))
+      +- *(1) Project [AirportID#0, WBAN#1 AS JOIN_WBAN#10, (TimeZone#2L * 3600) AS TimeZone#6L]
+         +- *(1) Filter isnotnull(WBAN#1)
+            +- *(1) FileScan csv [AirportID#0,WBAN#1,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<AirportID:string,WBAN:string,TimeZone:bigint>
+[2020-05-10T16:33:28.729+02:00] loading origin weather data
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- FL_CRS_DEP_TIME: long (nullable = true)
+ |-- WEATHER_TIME: long (nullable = true)
+ |-- WEATHER_COND: array (nullable = false)
+ |    |-- element: string (containsNull = true)
+
+== Physical Plan ==
+*(5) Project [FL_ID#85, FL_ONTIME#105, FL_CRS_DEP_TIME#157L, WEATHER_TIME#474L, WEATHER_COND#426]
++- *(5) SortMergeJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, ((WEATHER_TIME#474L >= (FL_CRS_DEP_TIME#157L - 43200)) && (WEATHER_TIME#474L <= FL_CRS_DEP_TIME#157L))
+   :- *(2) Sort [ORIGIN_AIRPORT_ID#28 ASC NULLS FIRST], false, 0
+   :  +- Exchange hashpartitioning(ORIGIN_AIRPORT_ID#28, 7)
+   :     +- *(1) Filter (isnotnull(ORIGIN_AIRPORT_ID#28) && isnotnull(FL_CRS_DEP_TIME#157L))
+   :        +- InMemoryTableScan [FL_ID#85, FL_ONTIME#105, FL_CRS_DEP_TIME#157L, ORIGIN_AIRPORT_ID#28], [isnotnull(ORIGIN_AIRPORT_ID#28), isnotnull(FL_CRS_DEP_TIME#157L)]
+   :              +- InMemoryRelation [FL_ID#85, FL_ONTIME#105, FL_CRS_DEP_TIME#157L, FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29], StorageLevel(disk, memory, deserialized, 1 replicas)
+   :                    +- *(2) Project [FL_ID#85, FL_ONTIME#105, (FL_DATE#64L - TimeZone#6L) AS FL_CRS_DEP_TIME#157L, (cast((FL_DATE#64L - TimeZone#6L) as double) + cast(CRS_ELAPSED_TIME#34 as double)) AS FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29]
+   :                       +- *(2) BroadcastHashJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, BuildRight
+   :                          :- *(2) Project [unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) AS FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, concat_ws(_, OP_CARRIER_AIRLINE_ID#26, cast(unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) as string), ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, OP_CARRIER_FL_NUM#27) AS FL_ID#85, cast(((cast(ARR_DELAY_NEW#31 as int) <= 15) || ((cast(WEATHER_DELAY#35 as int) <= 15) && (cast(NAS_DELAY#36 as int) <= 15))) as int) AS FL_ONTIME#105]
+   :                          :  +- *(2) Filter (((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15))) && isnotnull(ORIGIN_AIRPORT_ID#28))
+   :                          :     +- *(2) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1))), IsNotNull(ORIGIN_AIRPORT_ID)], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+   :                          +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, string, true]))
+   :                             +- *(1) Project [AirportID#0, (TimeZone#2L * 3600) AS TimeZone#6L]
+   :                                +- *(1) Filter isnotnull(AirportId#0)
+   :                                   +- *(1) FileScan csv [AirportID#0,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(AirportID)], ReadSchema: struct<AirportID:string,TimeZone:bigint>
+   +- *(4) Sort [AirportId#0 ASC NULLS FIRST], false, 0
+      +- Exchange hashpartitioning(AirportId#0, 7)
+         +- *(3) Filter (isnotnull(WEATHER_TIME#474L) && isnotnull(AirportId#0))
+            +- InMemoryTableScan [AirportID#0, WEATHER_TIME#474L, WEATHER_COND#426], [isnotnull(WEATHER_TIME#474L), isnotnull(AirportId#0)]
+                  +- InMemoryRelation [AirportID#0, WEATHER_TIME#474L, WEATHER_COND#426], StorageLevel(disk, memory, deserialized, 1 replicas)
+                        +- *(2) Project [AirportID#0, (Date#443L - TimeZone#6L) AS WEATHER_TIME#474L, WEATHER_COND#426]
+                           +- *(2) BroadcastHashJoin [WBAN#224], [JOIN_WBAN#10], Inner, BuildRight
+                              :- *(2) Project [WBAN#224, unix_timestamp(concat_ws(, Date#225, Time#226), yyyyMMddHHmm, Some(Europe/Paris)) AS Date#443L, array(CASE WHEN ((trim(RelativeHumidity#246, None) = ) || (RelativeHumidity#246 = M)) THEN null ELSE RelativeHumidity#246 END, CASE WHEN ((trim(DryBulbCelsius#236, None) = ) || (DryBulbCelsius#236 = M)) THEN null ELSE DryBulbCelsius#236 END, CASE WHEN ((trim(WindSpeed#248, None) = ) || (WindSpeed#248 = M)) THEN null ELSE WindSpeed#248 END, CASE WHEN ((trim(StationPressure#254, None) = ) || (StationPressure#254 = M)) THEN null ELSE StationPressure#254 END, CASE WHEN ((trim(Visibility#230, None) = ) || (Visibility#230 = M)) THEN null ELSE Visibility#230 END, CASE WHEN (if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) = 10.0) THEN W2 ELSE concat(W, cast(cast(if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) as int) as string)) END) AS WEATHER_COND#426]
+                              :  +- *(2) Filter isnotnull(WBAN#224)
+                              :     +- *(2) FileScan csv [WBAN#224,Date#225,Time#226,Visibility#230,DryBulbCelsius#236,RelativeHumidity#246,WindSpeed#248,WindDirection#250,StationPressure#254] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<WBAN:string,Date:string,Time:string,Visibility:string,DryBulbCelsius:string,RelativeHumidi...
+                              +- BroadcastExchange HashedRelationBroadcastMode(List(input[1, string, true]))
+                                 +- *(1) Project [AirportID#0, WBAN#1 AS JOIN_WBAN#10, (TimeZone#2L * 3600) AS TimeZone#6L]
+                                    +- *(1) Filter isnotnull(WBAN#1)
+                                       +- *(1) FileScan csv [AirportID#0,WBAN#1,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<AirportID:string,WBAN:string,TimeZone:bigint>
+[2020-05-10T16:33:28.822+02:00] building origin weather data
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- WEATHER_COND: array (nullable = true)
+ |    |-- element: array (containsNull = true)
+ |    |    |-- element: string (containsNull = true)
+
+== Physical Plan ==
+ObjectHashAggregate(keys=[FL_ID#85, FL_CRS_DEP_TIME#157L, FL_ONTIME#105], functions=[collect_list(WEATHER_TIME#474L, 0, 0), collect_list(WEATHER_COND#426, 0, 0)])
++- Exchange hashpartitioning(FL_ID#85, FL_CRS_DEP_TIME#157L, FL_ONTIME#105, 7)
+   +- ObjectHashAggregate(keys=[FL_ID#85, FL_CRS_DEP_TIME#157L, FL_ONTIME#105], functions=[partial_collect_list(WEATHER_TIME#474L, 0, 0), partial_collect_list(WEATHER_COND#426, 0, 0)])
+      +- *(5) Project [FL_ID#85, FL_ONTIME#105, FL_CRS_DEP_TIME#157L, WEATHER_TIME#474L, WEATHER_COND#426]
+         +- *(5) SortMergeJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, ((WEATHER_TIME#474L >= (FL_CRS_DEP_TIME#157L - 43200)) && (WEATHER_TIME#474L <= FL_CRS_DEP_TIME#157L))
+            :- *(2) Sort [ORIGIN_AIRPORT_ID#28 ASC NULLS FIRST], false, 0
+            :  +- Exchange hashpartitioning(ORIGIN_AIRPORT_ID#28, 7)
+            :     +- *(1) Filter (isnotnull(ORIGIN_AIRPORT_ID#28) && isnotnull(FL_CRS_DEP_TIME#157L))
+            :        +- InMemoryTableScan [FL_ID#85, FL_ONTIME#105, FL_CRS_DEP_TIME#157L, ORIGIN_AIRPORT_ID#28], [isnotnull(ORIGIN_AIRPORT_ID#28), isnotnull(FL_CRS_DEP_TIME#157L)]
+            :              +- InMemoryRelation [FL_ID#85, FL_ONTIME#105, FL_CRS_DEP_TIME#157L, FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29], StorageLevel(disk, memory, deserialized, 1 replicas)
+            :                    +- *(2) Project [FL_ID#85, FL_ONTIME#105, (FL_DATE#64L - TimeZone#6L) AS FL_CRS_DEP_TIME#157L, (cast((FL_DATE#64L - TimeZone#6L) as double) + cast(CRS_ELAPSED_TIME#34 as double)) AS FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29]
+            :                       +- *(2) BroadcastHashJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, BuildRight
+            :                          :- *(2) Project [unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) AS FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, concat_ws(_, OP_CARRIER_AIRLINE_ID#26, cast(unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) as string), ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, OP_CARRIER_FL_NUM#27) AS FL_ID#85, cast(((cast(ARR_DELAY_NEW#31 as int) <= 15) || ((cast(WEATHER_DELAY#35 as int) <= 15) && (cast(NAS_DELAY#36 as int) <= 15))) as int) AS FL_ONTIME#105]
+            :                          :  +- *(2) Filter (((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15))) && isnotnull(ORIGIN_AIRPORT_ID#28))
+            :                          :     +- *(2) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1))), IsNotNull(ORIGIN_AIRPORT_ID)], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+            :                          +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, string, true]))
+            :                             +- *(1) Project [AirportID#0, (TimeZone#2L * 3600) AS TimeZone#6L]
+            :                                +- *(1) Filter isnotnull(AirportId#0)
+            :                                   +- *(1) FileScan csv [AirportID#0,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(AirportID)], ReadSchema: struct<AirportID:string,TimeZone:bigint>
+            +- *(4) Sort [AirportId#0 ASC NULLS FIRST], false, 0
+               +- Exchange hashpartitioning(AirportId#0, 7)
+                  +- *(3) Filter (isnotnull(WEATHER_TIME#474L) && isnotnull(AirportId#0))
+                     +- InMemoryTableScan [AirportID#0, WEATHER_TIME#474L, WEATHER_COND#426], [isnotnull(WEATHER_TIME#474L), isnotnull(AirportId#0)]
+                           +- InMemoryRelation [AirportID#0, WEATHER_TIME#474L, WEATHER_COND#426], StorageLevel(disk, memory, deserialized, 1 replicas)
+                                 +- *(2) Project [AirportID#0, (Date#443L - TimeZone#6L) AS WEATHER_TIME#474L, WEATHER_COND#426]
+                                    +- *(2) BroadcastHashJoin [WBAN#224], [JOIN_WBAN#10], Inner, BuildRight
+                                       :- *(2) Project [WBAN#224, unix_timestamp(concat_ws(, Date#225, Time#226), yyyyMMddHHmm, Some(Europe/Paris)) AS Date#443L, array(CASE WHEN ((trim(RelativeHumidity#246, None) = ) || (RelativeHumidity#246 = M)) THEN null ELSE RelativeHumidity#246 END, CASE WHEN ((trim(DryBulbCelsius#236, None) = ) || (DryBulbCelsius#236 = M)) THEN null ELSE DryBulbCelsius#236 END, CASE WHEN ((trim(WindSpeed#248, None) = ) || (WindSpeed#248 = M)) THEN null ELSE WindSpeed#248 END, CASE WHEN ((trim(StationPressure#254, None) = ) || (StationPressure#254 = M)) THEN null ELSE StationPressure#254 END, CASE WHEN ((trim(Visibility#230, None) = ) || (Visibility#230 = M)) THEN null ELSE Visibility#230 END, CASE WHEN (if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) = 10.0) THEN W2 ELSE concat(W, cast(cast(if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) as int) as string)) END) AS WEATHER_COND#426]
+                                       :  +- *(2) Filter isnotnull(WBAN#224)
+                                       :     +- *(2) FileScan csv [WBAN#224,Date#225,Time#226,Visibility#230,DryBulbCelsius#236,RelativeHumidity#246,WindSpeed#248,WindDirection#250,StationPressure#254] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<WBAN:string,Date:string,Time:string,Visibility:string,DryBulbCelsius:string,RelativeHumidi...
+                                       +- BroadcastExchange HashedRelationBroadcastMode(List(input[1, string, true]))
+                                          +- *(1) Project [AirportID#0, WBAN#1 AS JOIN_WBAN#10, (TimeZone#2L * 3600) AS TimeZone#6L]
+                                             +- *(1) Filter isnotnull(WBAN#1)
+                                                +- *(1) FileScan csv [AirportID#0,WBAN#1,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<AirportID:string,WBAN:string,TimeZone:bigint>
+[2020-05-10T16:33:28.929+02:00] loading destination weather data
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- FL_CRS_ARR_TIME: double (nullable = true)
+ |-- WEATHER_TIME: long (nullable = true)
+ |-- WEATHER_COND: array (nullable = false)
+ |    |-- element: string (containsNull = true)
+
+== Physical Plan ==
+*(5) Project [FL_ID#85, FL_ONTIME#105, FL_CRS_ARR_TIME#166, WEATHER_TIME#474L, WEATHER_COND#426]
++- *(5) SortMergeJoin [DEST_AIRPORT_ID#29], [AirportId#0], Inner, ((cast(WEATHER_TIME#474L as double) >= (FL_CRS_ARR_TIME#166 - 43200.0)) && (cast(WEATHER_TIME#474L as double) <= FL_CRS_ARR_TIME#166))
+   :- *(2) Sort [DEST_AIRPORT_ID#29 ASC NULLS FIRST], false, 0
+   :  +- Exchange hashpartitioning(DEST_AIRPORT_ID#29, 7)
+   :     +- *(1) Filter (isnotnull(FL_CRS_ARR_TIME#166) && isnotnull(DEST_AIRPORT_ID#29))
+   :        +- InMemoryTableScan [FL_ID#85, FL_ONTIME#105, FL_CRS_ARR_TIME#166, DEST_AIRPORT_ID#29], [isnotnull(FL_CRS_ARR_TIME#166), isnotnull(DEST_AIRPORT_ID#29)]
+   :              +- InMemoryRelation [FL_ID#85, FL_ONTIME#105, FL_CRS_DEP_TIME#157L, FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29], StorageLevel(disk, memory, deserialized, 1 replicas)
+   :                    +- *(2) Project [FL_ID#85, FL_ONTIME#105, (FL_DATE#64L - TimeZone#6L) AS FL_CRS_DEP_TIME#157L, (cast((FL_DATE#64L - TimeZone#6L) as double) + cast(CRS_ELAPSED_TIME#34 as double)) AS FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29]
+   :                       +- *(2) BroadcastHashJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, BuildRight
+   :                          :- *(2) Project [unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) AS FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, concat_ws(_, OP_CARRIER_AIRLINE_ID#26, cast(unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) as string), ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, OP_CARRIER_FL_NUM#27) AS FL_ID#85, cast(((cast(ARR_DELAY_NEW#31 as int) <= 15) || ((cast(WEATHER_DELAY#35 as int) <= 15) && (cast(NAS_DELAY#36 as int) <= 15))) as int) AS FL_ONTIME#105]
+   :                          :  +- *(2) Filter (((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15))) && isnotnull(ORIGIN_AIRPORT_ID#28))
+   :                          :     +- *(2) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1))), IsNotNull(ORIGIN_AIRPORT_ID)], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+   :                          +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, string, true]))
+   :                             +- *(1) Project [AirportID#0, (TimeZone#2L * 3600) AS TimeZone#6L]
+   :                                +- *(1) Filter isnotnull(AirportId#0)
+   :                                   +- *(1) FileScan csv [AirportID#0,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(AirportID)], ReadSchema: struct<AirportID:string,TimeZone:bigint>
+   +- *(4) Sort [AirportId#0 ASC NULLS FIRST], false, 0
+      +- Exchange hashpartitioning(AirportId#0, 7)
+         +- *(3) Filter (isnotnull(WEATHER_TIME#474L) && isnotnull(AirportId#0))
+            +- InMemoryTableScan [AirportID#0, WEATHER_TIME#474L, WEATHER_COND#426], [isnotnull(WEATHER_TIME#474L), isnotnull(AirportId#0)]
+                  +- InMemoryRelation [AirportID#0, WEATHER_TIME#474L, WEATHER_COND#426], StorageLevel(disk, memory, deserialized, 1 replicas)
+                        +- *(2) Project [AirportID#0, (Date#443L - TimeZone#6L) AS WEATHER_TIME#474L, WEATHER_COND#426]
+                           +- *(2) BroadcastHashJoin [WBAN#224], [JOIN_WBAN#10], Inner, BuildRight
+                              :- *(2) Project [WBAN#224, unix_timestamp(concat_ws(, Date#225, Time#226), yyyyMMddHHmm, Some(Europe/Paris)) AS Date#443L, array(CASE WHEN ((trim(RelativeHumidity#246, None) = ) || (RelativeHumidity#246 = M)) THEN null ELSE RelativeHumidity#246 END, CASE WHEN ((trim(DryBulbCelsius#236, None) = ) || (DryBulbCelsius#236 = M)) THEN null ELSE DryBulbCelsius#236 END, CASE WHEN ((trim(WindSpeed#248, None) = ) || (WindSpeed#248 = M)) THEN null ELSE WindSpeed#248 END, CASE WHEN ((trim(StationPressure#254, None) = ) || (StationPressure#254 = M)) THEN null ELSE StationPressure#254 END, CASE WHEN ((trim(Visibility#230, None) = ) || (Visibility#230 = M)) THEN null ELSE Visibility#230 END, CASE WHEN (if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) = 10.0) THEN W2 ELSE concat(W, cast(cast(if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) as int) as string)) END) AS WEATHER_COND#426]
+                              :  +- *(2) Filter isnotnull(WBAN#224)
+                              :     +- *(2) FileScan csv [WBAN#224,Date#225,Time#226,Visibility#230,DryBulbCelsius#236,RelativeHumidity#246,WindSpeed#248,WindDirection#250,StationPressure#254] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<WBAN:string,Date:string,Time:string,Visibility:string,DryBulbCelsius:string,RelativeHumidi...
+                              +- BroadcastExchange HashedRelationBroadcastMode(List(input[1, string, true]))
+                                 +- *(1) Project [AirportID#0, WBAN#1 AS JOIN_WBAN#10, (TimeZone#2L * 3600) AS TimeZone#6L]
+                                    +- *(1) Filter isnotnull(WBAN#1)
+                                       +- *(1) FileScan csv [AirportID#0,WBAN#1,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<AirportID:string,WBAN:string,TimeZone:bigint>
+[2020-05-10T16:33:29.011+02:00] building destination weather data
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- WEATHER_COND: array (nullable = true)
+ |    |-- element: array (containsNull = true)
+ |    |    |-- element: string (containsNull = true)
+
+== Physical Plan ==
+ObjectHashAggregate(keys=[FL_ID#85, FL_CRS_ARR_TIME#166, FL_ONTIME#105], functions=[collect_list(WEATHER_TIME#474L, 0, 0), collect_list(WEATHER_COND#426, 0, 0)])
++- Exchange hashpartitioning(FL_ID#85, FL_CRS_ARR_TIME#166, FL_ONTIME#105, 7)
+   +- ObjectHashAggregate(keys=[FL_ID#85, FL_CRS_ARR_TIME#166, FL_ONTIME#105], functions=[partial_collect_list(WEATHER_TIME#474L, 0, 0), partial_collect_list(WEATHER_COND#426, 0, 0)])
+      +- *(5) Project [FL_ID#85, FL_ONTIME#105, FL_CRS_ARR_TIME#166, WEATHER_TIME#474L, WEATHER_COND#426]
+         +- *(5) SortMergeJoin [DEST_AIRPORT_ID#29], [AirportId#0], Inner, ((cast(WEATHER_TIME#474L as double) >= (FL_CRS_ARR_TIME#166 - 43200.0)) && (cast(WEATHER_TIME#474L as double) <= FL_CRS_ARR_TIME#166))
+            :- *(2) Sort [DEST_AIRPORT_ID#29 ASC NULLS FIRST], false, 0
+            :  +- Exchange hashpartitioning(DEST_AIRPORT_ID#29, 7)
+            :     +- *(1) Filter (isnotnull(FL_CRS_ARR_TIME#166) && isnotnull(DEST_AIRPORT_ID#29))
+            :        +- InMemoryTableScan [FL_ID#85, FL_ONTIME#105, FL_CRS_ARR_TIME#166, DEST_AIRPORT_ID#29], [isnotnull(FL_CRS_ARR_TIME#166), isnotnull(DEST_AIRPORT_ID#29)]
+            :              +- InMemoryRelation [FL_ID#85, FL_ONTIME#105, FL_CRS_DEP_TIME#157L, FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29], StorageLevel(disk, memory, deserialized, 1 replicas)
+            :                    +- *(2) Project [FL_ID#85, FL_ONTIME#105, (FL_DATE#64L - TimeZone#6L) AS FL_CRS_DEP_TIME#157L, (cast((FL_DATE#64L - TimeZone#6L) as double) + cast(CRS_ELAPSED_TIME#34 as double)) AS FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29]
+            :                       +- *(2) BroadcastHashJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, BuildRight
+            :                          :- *(2) Project [unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) AS FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, concat_ws(_, OP_CARRIER_AIRLINE_ID#26, cast(unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) as string), ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, OP_CARRIER_FL_NUM#27) AS FL_ID#85, cast(((cast(ARR_DELAY_NEW#31 as int) <= 15) || ((cast(WEATHER_DELAY#35 as int) <= 15) && (cast(NAS_DELAY#36 as int) <= 15))) as int) AS FL_ONTIME#105]
+            :                          :  +- *(2) Filter (((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15))) && isnotnull(ORIGIN_AIRPORT_ID#28))
+            :                          :     +- *(2) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1))), IsNotNull(ORIGIN_AIRPORT_ID)], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+            :                          +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, string, true]))
+            :                             +- *(1) Project [AirportID#0, (TimeZone#2L * 3600) AS TimeZone#6L]
+            :                                +- *(1) Filter isnotnull(AirportId#0)
+            :                                   +- *(1) FileScan csv [AirportID#0,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(AirportID)], ReadSchema: struct<AirportID:string,TimeZone:bigint>
+            +- *(4) Sort [AirportId#0 ASC NULLS FIRST], false, 0
+               +- Exchange hashpartitioning(AirportId#0, 7)
+                  +- *(3) Filter (isnotnull(WEATHER_TIME#474L) && isnotnull(AirportId#0))
+                     +- InMemoryTableScan [AirportID#0, WEATHER_TIME#474L, WEATHER_COND#426], [isnotnull(WEATHER_TIME#474L), isnotnull(AirportId#0)]
+                           +- InMemoryRelation [AirportID#0, WEATHER_TIME#474L, WEATHER_COND#426], StorageLevel(disk, memory, deserialized, 1 replicas)
+                                 +- *(2) Project [AirportID#0, (Date#443L - TimeZone#6L) AS WEATHER_TIME#474L, WEATHER_COND#426]
+                                    +- *(2) BroadcastHashJoin [WBAN#224], [JOIN_WBAN#10], Inner, BuildRight
+                                       :- *(2) Project [WBAN#224, unix_timestamp(concat_ws(, Date#225, Time#226), yyyyMMddHHmm, Some(Europe/Paris)) AS Date#443L, array(CASE WHEN ((trim(RelativeHumidity#246, None) = ) || (RelativeHumidity#246 = M)) THEN null ELSE RelativeHumidity#246 END, CASE WHEN ((trim(DryBulbCelsius#236, None) = ) || (DryBulbCelsius#236 = M)) THEN null ELSE DryBulbCelsius#236 END, CASE WHEN ((trim(WindSpeed#248, None) = ) || (WindSpeed#248 = M)) THEN null ELSE WindSpeed#248 END, CASE WHEN ((trim(StationPressure#254, None) = ) || (StationPressure#254 = M)) THEN null ELSE StationPressure#254 END, CASE WHEN ((trim(Visibility#230, None) = ) || (Visibility#230 = M)) THEN null ELSE Visibility#230 END, CASE WHEN (if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) = 10.0) THEN W2 ELSE concat(W, cast(cast(if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) as int) as string)) END) AS WEATHER_COND#426]
+                                       :  +- *(2) Filter isnotnull(WBAN#224)
+                                       :     +- *(2) FileScan csv [WBAN#224,Date#225,Time#226,Visibility#230,DryBulbCelsius#236,RelativeHumidity#246,WindSpeed#248,WindDirection#250,StationPressure#254] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<WBAN:string,Date:string,Time:string,Visibility:string,DryBulbCelsius:string,RelativeHumidi...
+                                       +- BroadcastExchange HashedRelationBroadcastMode(List(input[1, string, true]))
+                                          +- *(1) Project [AirportID#0, WBAN#1 AS JOIN_WBAN#10, (TimeZone#2L * 3600) AS TimeZone#6L]
+                                             +- *(1) Filter isnotnull(WBAN#1)
+                                                +- *(1) FileScan csv [AirportID#0,WBAN#1,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<AirportID:string,WBAN:string,TimeZone:bigint>
+[2020-05-10T16:33:29.063+02:00] Building final dataset with origin and destion weather conditions + on-time flag
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- ORIGIN_WEATHER_COND: array (nullable = true)
+ |    |-- element: array (containsNull = true)
+ |    |    |-- element: string (containsNull = true)
+ |-- DEST_WEATHER_COND: array (nullable = true)
+ |    |-- element: array (containsNull = true)
+ |    |    |-- element: string (containsNull = true)
+
+== Physical Plan ==
+*(13) Project [FL_ID#85, FL_ONTIME#105, WEATHER_COND#589 AS ORIGIN_WEATHER_COND#816, WEATHER_COND#734 AS DEST_WEATHER_COND#817]
++- *(13) SortMergeJoin [FL_ID#85], [FL_ID#795], Inner
+   :- *(6) Sort [FL_ID#85 ASC NULLS FIRST], false, 0
+   :  +- Exchange hashpartitioning(FL_ID#85, 7)
+   :     +- ObjectHashAggregate(keys=[FL_ID#85, FL_CRS_DEP_TIME#157L, FL_ONTIME#105], functions=[collect_list(WEATHER_TIME#474L, 0, 0), collect_list(WEATHER_COND#426, 0, 0)])
+   :        +- Exchange hashpartitioning(FL_ID#85, FL_CRS_DEP_TIME#157L, FL_ONTIME#105, 7)
+   :           +- ObjectHashAggregate(keys=[FL_ID#85, FL_CRS_DEP_TIME#157L, FL_ONTIME#105], functions=[partial_collect_list(WEATHER_TIME#474L, 0, 0), partial_collect_list(WEATHER_COND#426, 0, 0)])
+   :              +- *(5) Project [FL_ID#85, FL_ONTIME#105, FL_CRS_DEP_TIME#157L, WEATHER_TIME#474L, WEATHER_COND#426]
+   :                 +- *(5) SortMergeJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, ((WEATHER_TIME#474L >= (FL_CRS_DEP_TIME#157L - 43200)) && (WEATHER_TIME#474L <= FL_CRS_DEP_TIME#157L))
+   :                    :- *(2) Sort [ORIGIN_AIRPORT_ID#28 ASC NULLS FIRST], false, 0
+   :                    :  +- Exchange hashpartitioning(ORIGIN_AIRPORT_ID#28, 7)
+   :                    :     +- *(1) Filter (isnotnull(ORIGIN_AIRPORT_ID#28) && isnotnull(FL_CRS_DEP_TIME#157L))
+   :                    :        +- InMemoryTableScan [FL_ID#85, FL_ONTIME#105, FL_CRS_DEP_TIME#157L, ORIGIN_AIRPORT_ID#28], [isnotnull(ORIGIN_AIRPORT_ID#28), isnotnull(FL_CRS_DEP_TIME#157L)]
+   :                    :              +- InMemoryRelation [FL_ID#85, FL_ONTIME#105, FL_CRS_DEP_TIME#157L, FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29], StorageLevel(disk, memory, deserialized, 1 replicas)
+   :                    :                    +- *(2) Project [FL_ID#85, FL_ONTIME#105, (FL_DATE#64L - TimeZone#6L) AS FL_CRS_DEP_TIME#157L, (cast((FL_DATE#64L - TimeZone#6L) as double) + cast(CRS_ELAPSED_TIME#34 as double)) AS FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29]
+   :                    :                       +- *(2) BroadcastHashJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, BuildRight
+   :                    :                          :- *(2) Project [unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) AS FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, concat_ws(_, OP_CARRIER_AIRLINE_ID#26, cast(unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) as string), ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, OP_CARRIER_FL_NUM#27) AS FL_ID#85, cast(((cast(ARR_DELAY_NEW#31 as int) <= 15) || ((cast(WEATHER_DELAY#35 as int) <= 15) && (cast(NAS_DELAY#36 as int) <= 15))) as int) AS FL_ONTIME#105]
+   :                    :                          :  +- *(2) Filter (((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15))) && isnotnull(ORIGIN_AIRPORT_ID#28))
+   :                    :                          :     +- *(2) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1))), IsNotNull(ORIGIN_AIRPORT_ID)], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+   :                    :                          +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, string, true]))
+   :                    :                             +- *(1) Project [AirportID#0, (TimeZone#2L * 3600) AS TimeZone#6L]
+   :                    :                                +- *(1) Filter isnotnull(AirportId#0)
+   :                    :                                   +- *(1) FileScan csv [AirportID#0,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(AirportID)], ReadSchema: struct<AirportID:string,TimeZone:bigint>
+   :                    +- *(4) Sort [AirportId#0 ASC NULLS FIRST], false, 0
+   :                       +- Exchange hashpartitioning(AirportId#0, 7)
+   :                          +- *(3) Filter (isnotnull(WEATHER_TIME#474L) && isnotnull(AirportId#0))
+   :                             +- InMemoryTableScan [AirportID#0, WEATHER_TIME#474L, WEATHER_COND#426], [isnotnull(WEATHER_TIME#474L), isnotnull(AirportId#0)]
+   :                                   +- InMemoryRelation [AirportID#0, WEATHER_TIME#474L, WEATHER_COND#426], StorageLevel(disk, memory, deserialized, 1 replicas)
+   :                                         +- *(2) Project [AirportID#0, (Date#443L - TimeZone#6L) AS WEATHER_TIME#474L, WEATHER_COND#426]
+   :                                            +- *(2) BroadcastHashJoin [WBAN#224], [JOIN_WBAN#10], Inner, BuildRight
+   :                                               :- *(2) Project [WBAN#224, unix_timestamp(concat_ws(, Date#225, Time#226), yyyyMMddHHmm, Some(Europe/Paris)) AS Date#443L, array(CASE WHEN ((trim(RelativeHumidity#246, None) = ) || (RelativeHumidity#246 = M)) THEN null ELSE RelativeHumidity#246 END, CASE WHEN ((trim(DryBulbCelsius#236, None) = ) || (DryBulbCelsius#236 = M)) THEN null ELSE DryBulbCelsius#236 END, CASE WHEN ((trim(WindSpeed#248, None) = ) || (WindSpeed#248 = M)) THEN null ELSE WindSpeed#248 END, CASE WHEN ((trim(StationPressure#254, None) = ) || (StationPressure#254 = M)) THEN null ELSE StationPressure#254 END, CASE WHEN ((trim(Visibility#230, None) = ) || (Visibility#230 = M)) THEN null ELSE Visibility#230 END, CASE WHEN (if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) = 10.0) THEN W2 ELSE concat(W, cast(cast(if (isnull(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END)) null else UDF:bucketizer_0(CASE WHEN (trim(WindDirection#250, None) = VR) THEN -1.0 ELSE cast(WindDirection#250 as double) END) as int) as string)) END) AS WEATHER_COND#426]
+   :                                               :  +- *(2) Filter isnotnull(WBAN#224)
+   :                                               :     +- *(2) FileScan csv [WBAN#224,Date#225,Time#226,Visibility#230,DryBulbCelsius#236,RelativeHumidity#246,WindSpeed#248,WindDirection#250,StationPressure#254] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<WBAN:string,Date:string,Time:string,Visibility:string,DryBulbCelsius:string,RelativeHumidi...
+   :                                               +- BroadcastExchange HashedRelationBroadcastMode(List(input[1, string, true]))
+   :                                                  +- *(1) Project [AirportID#0, WBAN#1 AS JOIN_WBAN#10, (TimeZone#2L * 3600) AS TimeZone#6L]
+   :                                                     +- *(1) Filter isnotnull(WBAN#1)
+   :                                                        +- *(1) FileScan csv [AirportID#0,WBAN#1,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(WBAN)], ReadSchema: struct<AirportID:string,WBAN:string,TimeZone:bigint>
+   +- *(12) Sort [FL_ID#795 ASC NULLS FIRST], false, 0
+      +- Exchange hashpartitioning(FL_ID#795, 7)
+         +- ObjectHashAggregate(keys=[FL_ID#795, FL_CRS_ARR_TIME#166, FL_ONTIME#793], functions=[collect_list(WEATHER_TIME#474L, 0, 0), collect_list(WEATHER_COND#426, 0, 0)])
+            +- Exchange hashpartitioning(FL_ID#795, FL_CRS_ARR_TIME#166, FL_ONTIME#793, 7)
+               +- ObjectHashAggregate(keys=[FL_ID#795, FL_CRS_ARR_TIME#166, FL_ONTIME#793], functions=[partial_collect_list(WEATHER_TIME#474L, 0, 0), partial_collect_list(WEATHER_COND#426, 0, 0)])
+                  +- *(11) Project [FL_ID#795, FL_ONTIME#793, FL_CRS_ARR_TIME#166, WEATHER_TIME#474L, WEATHER_COND#426]
+                     +- *(11) SortMergeJoin [DEST_AIRPORT_ID#29], [AirportId#0], Inner, ((cast(WEATHER_TIME#474L as double) >= (FL_CRS_ARR_TIME#166 - 43200.0)) && (cast(WEATHER_TIME#474L as double) <= FL_CRS_ARR_TIME#166))
+                        :- *(8) Sort [DEST_AIRPORT_ID#29 ASC NULLS FIRST], false, 0
+                        :  +- Exchange hashpartitioning(DEST_AIRPORT_ID#29, 7)
+                        :     +- *(7) Filter (isnotnull(FL_CRS_ARR_TIME#166) && isnotnull(DEST_AIRPORT_ID#29))
+                        :        +- InMemoryTableScan [FL_ID#795, FL_ONTIME#793, FL_CRS_ARR_TIME#166, DEST_AIRPORT_ID#29], [isnotnull(FL_CRS_ARR_TIME#166), isnotnull(DEST_AIRPORT_ID#29)]
+                        :              +- InMemoryRelation [FL_ID#795, FL_ONTIME#793, FL_CRS_DEP_TIME#157L, FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29], StorageLevel(disk, memory, deserialized, 1 replicas)
+                        :                    +- *(2) Project [FL_ID#85, FL_ONTIME#105, (FL_DATE#64L - TimeZone#6L) AS FL_CRS_DEP_TIME#157L, (cast((FL_DATE#64L - TimeZone#6L) as double) + cast(CRS_ELAPSED_TIME#34 as double)) AS FL_CRS_ARR_TIME#166, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29]
+                        :                       +- *(2) BroadcastHashJoin [ORIGIN_AIRPORT_ID#28], [AirportId#0], Inner, BuildRight
+                        :                          :- *(2) Project [unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) AS FL_DATE#64L, ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, CRS_ELAPSED_TIME#34, concat_ws(_, OP_CARRIER_AIRLINE_ID#26, cast(unix_timestamp(concat_ws(, FL_DATE#25, CRS_DEP_TIME#30), yyyy-MM-ddHHmm, Some(Europe/Paris)) as string), ORIGIN_AIRPORT_ID#28, DEST_AIRPORT_ID#29, OP_CARRIER_FL_NUM#27) AS FL_ID#85, cast(((cast(ARR_DELAY_NEW#31 as int) <= 15) || ((cast(WEATHER_DELAY#35 as int) <= 15) && (cast(NAS_DELAY#36 as int) <= 15))) as int) AS FL_ONTIME#105]
+                        :                          :  +- *(2) Filter (((NOT (CANCELLED#32 = 1) || NOT (DIVERTED#33 = 1)) && (((cast(ARR_DELAY_NEW#31 as int) <= 15) || (cast(WEATHER_DELAY#35 as int) >= 15)) || (cast(NAS_DELAY#36 as int) >= 15))) && isnotnull(ORIGIN_AIRPORT_ID#28))
+                        :                          :     +- *(2) FileScan csv [FL_DATE#25,OP_CARRIER_AIRLINE_ID#26,OP_CARRIER_FL_NUM#27,ORIGIN_AIRPORT_ID#28,DEST_AIRPORT_ID#29,CRS_DEP_TIME#30,ARR_DELAY_NEW#31,CANCELLED#32,DIVERTED#33,CRS_ELAPSED_TIME#34,WEATHER_DELAY#35,NAS_DELAY#36] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [Or(Not(EqualTo(CANCELLED,1)),Not(EqualTo(DIVERTED,1))), IsNotNull(ORIGIN_AIRPORT_ID)], ReadSchema: struct<FL_DATE:string,OP_CARRIER_AIRLINE_ID:string,OP_CARRIER_FL_NUM:string,ORIGIN_AIRPORT_ID:str...
+                        :                          +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, string, true]))
+                        :                             +- *(1) Project [AirportID#0, (TimeZone#2L * 3600) AS TimeZone#6L]
+                        :                                +- *(1) Filter isnotnull(AirportId#0)
+                        :                                   +- *(1) FileScan csv [AirportID#0,TimeZone#2L] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-..., PartitionFilters: [], PushedFilters: [IsNotNull(AirportID)], ReadSchema: struct<AirportID:string,TimeZone:bigint>
+                        +- *(10) Sort [AirportId#0 ASC NULLS FIRST], false, 0
+                           +- ReusedExchange [AirportID#0, WEATHER_TIME#474L, WEATHER_COND#426], Exchange hashpartitioning(AirportId#0, 7)
+[2020-05-10T16:33:29.210+02:00] exploding features column into individual columns
+[2020-05-10T16:33:29.847+02:00] Fitting features transformation model
+[2020-05-10T16:35:20.615+02:00] Transforming data
+[2020-05-10T16:35:21.888+02:00] Creating DecisionTreeRegressor
+[2020-05-10T16:35:21.905+02:00] Fitting the model
+[2020-05-10T16:36:06.722+02:00] Prediction
+[2020-05-10T16:36:06.734+02:00] Evaluate the prediction
+[2020-05-10T16:36:07.530+02:00] Root Mean Squared Error (RMSE) on test data = 0.2832964224648655
+[2020-05-10T16:36:07.530+02:00] END: 165 s

@@ -1,7 +1,9 @@
+import java.io.File
+
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler}
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions._
+import org.apache.spark.sql.functions.{col, _}
 
 object DataWrangling {
 
@@ -9,153 +11,187 @@ object DataWrangling {
 
   def loadData(): DataFrame = {
 
-    val flightsPath = getClass.getResource("ontime_reporting_2013_12.csv").getPath
-    val wbanAirportsPath = getClass.getResource("wban_airport_timezone.csv").getPath
-    val weatherPath = getClass.getResource("weather_2013_12.csv").getPath
+    val weatherTimeDecay = 12; // 12h before the fight event (departure and arrival)
+    val delayThreshold = 15.0 // the threshold of the flight delay is set to 15 minutes by default
 
-    Utils.log("Loadind relationship between weather and airport data")
-    var wbanAirportsData = Utils.sparkSession.read.format("csv")
+    val flightsPath: String = getClass.getResource("ontime_reporting_2013_12_0.csv").getPath
+    val weatherPath = getClass.getResource("weather_2013_12_0.csv").getPath
+    val wbanAirportsPath = getClass.getResource("wban_airport_timezone.csv").getPath
+    val outputPath = new File(flightsPath).getParent + "/output_2013_12.parquet"
+
+    Utils.log("Loading relationship data between weather and airport data")
+    val wbanAirportsData = Utils.sparkSession.read.format("csv")
       .option("header", "true").option("inferSchema", "true")
       .load(wbanAirportsPath)
       .cache()
-    //Utils.log(wbanAirportsData)
+    Utils.log(wbanAirportsData)
+
+    Utils.log("preparing flights data...")
+    val flightsData = prepareFlightsData(flightsPath, wbanAirportsData, delayThreshold)
+
+    Utils.log("preparing weather data...")
+    val weatherData = prepareWeatherData(weatherPath, wbanAirportsData)
+
+    Utils.log("combining weather data with departure flight data...")
+    val airportOriginWeatherData = prepareData(weatherData, flightsData, weatherTimeDecay, "ORIGIN_AIRPORT_ID", "DEP_TIME")
+    Utils.log(airportOriginWeatherData)
+
+    Utils.log("combining weather data with destination flight data...")
+    val airportDestWeatherData = prepareData(weatherData, flightsData, weatherTimeDecay, "DEST_AIRPORT_ID", "ARR_TIME")
+    Utils.log(airportDestWeatherData)
+
+    Utils.log("joining the departure and the destination data...")
+    var data = airportOriginWeatherData.as("origin").join(airportDestWeatherData.as("dest"), $"origin.FL_ID" === $"dest.FL_ID", "inner")
+      .select(
+        $"origin.FL_ID".as("FL_ID"),
+        $"origin.FL_ONTIME".as("FL_ONTIME"),
+        $"origin.WEATHER_COND".as("ORIGIN_WEATHER_COND"),
+        $"dest.WEATHER_COND".as("DEST_WEATHER_COND"))
+    Utils.log(data)
+    //Utils.log(s"data.count(): ${data.count()}")
+
+    Utils.log("balancing the dataset by selecting the same number of records for the on time flights and delayed ones...")
+    val nbFlightsPerCategory = data.groupBy("FL_ONTIME").agg(count("FL_ID").as("FL_ONTIME_COUNT")).orderBy("FL_ONTIME")
+    Utils.log(nbFlightsPerCategory)
+
+    if (nbFlightsPerCategory.count() == 2) {
+      nbFlightsPerCategory.show(numRows = 10, truncate = false)
+      val nbDelayed = nbFlightsPerCategory.first().getAs[Long](1)
+      val nbOnTime = data.count() - nbDelayed // TODO Replace count()
+      if (nbOnTime > nbDelayed) data = data.where($"FL_ONTIME" === 0).union(data.where($"FL_ONTIME" === 1).limit(nbDelayed.toInt))
+      else if (nbDelayed > nbOnTime) data = data.where($"FL_ONTIME" === 1).union(data.where($"FL_ONTIME" === 0).limit(nbDelayed.toInt))
+      data = data.orderBy("FL_ONTIME")
+      Utils.log(data)
+    }
+
+    // save the resulting data into json file
+    Utils.log(s"saving the output to $outputPath ...")
+    data.coalesce(1).write.format("parquet").mode("overwrite").save(outputPath)
+
+    data
+  }
+
+  def prepareData(weatherData: DataFrame, flightsData: DataFrame, weatherTimeDecay: Int, airportLabel: String, flightTimeLabel: String):
+  DataFrame = {
+    val airportWeatherData = flightsData.join(weatherData, col(airportLabel) === $"AirportID", "inner")
+      .where(Utils.hasImpactOnFlight(col(flightTimeLabel), $"WEATHER_TIME", lit(weatherTimeDecay))) // take the last weatherTimeDecay-th record
+      .coalesce(2)
+      .cache()
+    Utils.log(airportWeatherData)
+
+    Utils.log("grouping weather record timeserie...")
+    var airportWeatherDataTimeserie = airportWeatherData
+      //.where(col(flightTimeLabel) =!= null)
+      .groupBy($"FL_ID")
+      .agg(max(col(flightTimeLabel)).as(flightTimeLabel), collect_list($"WEATHER_TIME").as("WEATHER_TIMESERIE"))
+      .coalesce(2)
+    Utils.log(airportWeatherDataTimeserie)
+
+    Utils.log("Filling up weather missing data...")
+    var airportWeatherDataFilled = airportWeatherDataTimeserie
+      .withColumn("WEATHER_TIMESERIE", Utils.fillWeatherMissingDataUdf(col(flightTimeLabel), $"WEATHER_TIMESERIE", lit(weatherTimeDecay)))
+    Utils.log(airportWeatherDataFilled)
+
+    Utils.log("Assembling airport+weather data...")
+    airportWeatherDataFilled = airportWeatherDataTimeserie
+      .withColumn("WEATHER_TIME", explode($"WEATHER_TIMESERIE")).as("filled")
+      .join(airportWeatherData.as("original"), $"filled.WEATHER_TIME" === $"original.WEATHER_TIME", "inner")
+      .groupBy("original.FL_ID").agg(max($"FL_ONTIME").as("FL_ONTIME"), collect_list("original.WEATHER_COND").as("WEATHER_COND"))
+      .coalesce(1)
+      .cache()
+    Utils.log(airportWeatherDataFilled)
+    airportWeatherDataFilled.show(truncate = false)
+
+    airportWeatherDataFilled
+  }
+
+  def prepareFlightsData(flightsPath: String, wbanAirportsData: DataFrame, delayThreshold: Double): DataFrame = {
 
     Utils.log("Loading flights data")
+    val flightsFeatures = Array("FL_ID", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "DEP_TIME", "ARR_TIME", "FL_ONTIME")
+    val delayFields = Array("CARRIER_DELAY", "WEATHER_DELAY", "NAS_DELAY", "SECURITY_DELAY", "LATE_AIRCRAFT_DELAY")
     var flightsData = Utils.sparkSession.read.format("csv")
       .option("header", "true").option("inferSchema", "true")
       .load(flightsPath)
-      //.limit(100)
-      .withColumn("FL_ID", monotonically_increasing_id())
-      .drop("ORIGIN", "DEST", "DEST", "_c14")
-      .na.fill(0.0, Seq("CARRIER_DELAY", "WEATHER_DELAY", "NAS_DELAY", "SECURITY_DELAY", "LATE_AIRCRAFT_DELAY"))
+      .limit(10)
+      .withColumn("FL_ID", concat($"ORIGIN", lit("_"), $"DEST", lit("_"), $"FL_DATE", lit("_"), $"DEP_TIME", lit("_"), $"CARRIER"))
+      .sort("FL_ID")
+      .drop("ORIGIN", "DEST", "_c14")
+      .na.fill(0.0, delayFields)
       .cache()
-    //Utils.log(flightsData)
+    Utils.log(flightsData)
 
-    Utils.log("Joining airports data with airport_wban_tz data")
+    Utils.log("Joining airports data with airport_wban_tz data...")
     // assign time zones in order to normalize the times
-    flightsData = flightsData.join(wbanAirportsData, $"ORIGIN_AIRPORT_ID" === $"AirportID", "inner")
-      .drop("WBAN").withColumnRenamed("TimeZone", "ORIGIN_TZ").drop("AirportID")
-      .join(wbanAirportsData, $"DEST_AIRPORT_ID" === $"AirportID", "inner")
-      .drop("WBAN").withColumnRenamed("TimeZone", "DEST_TZ").drop("AirportID")
+    flightsData = flightsData
+      .join(wbanAirportsData, $"ORIGIN_AIRPORT_ID" === $"AirportID", "inner") // join with origin flights data
+      .withColumn("DEP_TIME", Utils.convertTimeUdf($"FL_DATE", $"DEP_TIME", $"TimeZone")) // convert all times to UTC
+      .drop("TimeZone", "AirportID", "WBAN")
+      .join(wbanAirportsData, $"DEST_AIRPORT_ID" === $"AirportID", "inner") // join with destination flights data
+      .withColumn("ARR_TIME", Utils.convertTimeUdf($"FL_DATE", $"ARR_TIME", $"TimeZone"))
       .cache()
-    //Utils.log(flightsData)
+    flightsData = flightsData.coalesce(1)
+    Utils.log(flightsData)
 
-    Utils.log("Normalizing times")
-    // convert datetimes and normalize them to UTC
-    flightsData = flightsData.withColumn("CRS_DEP_TIME", Utils.convertTimeUdf($"FL_DATE", $"CRS_DEP_TIME", $"ORIGIN_TZ"))
-      .withColumn("DEP_TIME", Utils.convertTimeUdf($"FL_DATE", $"DEP_TIME", $"ORIGIN_TZ"))
-      .withColumn("CRS_ARR_TIME", Utils.convertTimeUdf($"FL_DATE", $"CRS_ARR_TIME", $"DEST_TZ"))
-      .withColumn("ARR_TIME", Utils.convertTimeUdf($"FL_DATE", $"ARR_TIME", $"DEST_TZ"))
-      .drop("FL_DATE", "ORIGIN_TZ", "DEST_TZ")
+    Utils.log("Computing the ontime flag based on the delay threshold " + delayThreshold + "...")
+    flightsData = flightsData
+      .withColumn("FL_ONTIME", Utils.isOnTimeUdf(lit(delayThreshold), $"CARRIER_DELAY", $"WEATHER_DELAY", $"NAS_DELAY", $"SECURITY_DELAY", $"LATE_AIRCRAFT_DELAY"))
+      .select(flightsFeatures.map(x => col(x)): _*)
       .cache()
-    //Utils.log(flightsData)
+    Utils.log(flightsData)
 
-    Utils.log("Computing the ontime flag")
-    // compute OnTime column
-    val threshold = 15.0 // the threshold is set to 15 minutes
-    flightsData = flightsData.withColumn("FL_ONTIME", Utils.isOnTimeUdf(lit(threshold), $"CARRIER_DELAY", $"WEATHER_DELAY", $"NAS_DELAY", $"SECURITY_DELAY", $"LATE_AIRCRAFT_DELAY"))
-      .drop("CARRIER_DELAY", "WEATHER_DELAY", "NAS_DELAY", "SECURITY_DELAY", "LATE_AIRCRAFT_DELAY")
-      .cache()
+    flightsData
+  }
 
-    //Utils.log(flightsData)
+  def prepareWeatherData(weatherPath: String, wbanAirportsData: DataFrame): DataFrame = {
+    Utils.log("Loading weather data...")
+    val weatherCategoricalFeaturesCols = Array("SkyCondition", "WeatherType")
+    val weatherNumericalFeaturesCols = Array("DryBulbCelsius", "RelativeHumidity", "WindDirection", "WindSpeed", "StationPressure", "Visibility")
+    var weatherFeatures = weatherNumericalFeaturesCols ++ weatherCategoricalFeaturesCols
 
-    Utils.log("Loading weather data")
     var weatherData = Utils.sparkSession.read.format("csv")
       .option("header", "true").option("inferSchema", "true")
       .load(weatherPath)
-      //.limit(10000)
       .cache()
+
+    Utils.log("Converting some weather conditions values to double")
+    weatherData = weatherNumericalFeaturesCols.foldLeft(weatherData) {
+      case (acc, col) => acc.withColumn(col, weatherData(col).cast("double"))
+    }
+    weatherData = weatherData.coalesce(1)
+    Utils.log(weatherData)
 
     Utils.log("Joining weather data with airport_wban_tz data and normalizing times")
-    weatherData = weatherData.select("WBAN", "Date", "Time", "DryBulbCelsius", "RelativeHumidity", "WindDirection", "WindSpeed",
-      "StationPressure", "SkyCondition", "Visibility", "WeatherType").as("w")
+    val cols = weatherFeatures ++ Array("WEATHER_TIME", "AirportID")
+    weatherData = weatherData.as("w")
       .join(wbanAirportsData.as("a"), $"w.WBAN" === $"a.WBAN", "inner")
-      .withColumn("WEATHER_TIME", Utils.convertWeatherTimeUdf($"Date", $"Time", $"TimeZone")) // normalize times
-      .drop("Date", "WBAN", "TimeZone")
+      .withColumn("WEATHER_TIME", Utils.convertWeatherTimeUdf($"Date", $"Time", $"TimeZone")) // convert record times to UTC
+      .select(cols.map(c => col(c)): _*)
       .cache()
-
-    //Utils.log(weatherData)
-    Utils.log("Converting weather conditions values to double")
-    //cast
-    val strColumns = Array("DryBulbCelsius", "RelativeHumidity", "WindDirection", "WindSpeed", "StationPressure", "Visibility")
-    strColumns.foreach(c => {
-      weatherData = weatherData.withColumn(c, col(c).cast("double"))
-    })
-    weatherData = weatherData.cache()
+    weatherData = weatherData.coalesce(1)
+    Utils.log(weatherData)
 
     // And then transformed the categorical variables into one hot encoder vectors
-    val categoricalFeaturesCols = Array("SkyCondition", "WeatherType")
-    val indexers = categoricalFeaturesCols.map(colName =>
-      new StringIndexer().setInputCol(colName)
-        .setOutputCol(colName + "Category"))
+    val indexers = weatherCategoricalFeaturesCols.map(colName => new StringIndexer().setInputCol(colName)
+      .setOutputCol(colName + "Category"))
 
-    val assembler = new VectorAssembler()
-      .setInputCols(Array("DryBulbCelsius", "RelativeHumidity", "WindDirection",
-        "WindSpeed", "StationPressure", "SkyConditionCategory", "Visibility", "WeatherTypeCategory"))
-      .setOutputCol("WEATHER_COND")
-      .setHandleInvalid("skip")
+    weatherFeatures = weatherNumericalFeaturesCols ++ indexers.map(c=>c.getOutputCol)
+    val assembler = new VectorAssembler().setHandleInvalid("skip")
+      .setInputCols(weatherFeatures).setOutputCol("WEATHER_COND")
 
     Utils.log("Applying transformers on the weather data")
     // We chain all transformers using a pipeline object
-    val pipeline = new Pipeline()
-      .setStages(indexers ++ Array(assembler))
+    val pipeline = new Pipeline().setStages(indexers ++ Array(assembler))
     // We create here our model by fitting the pipeline with the input data
+    Utils.log("Fitting the model with the original weather data...")
     val model = pipeline.fit(weatherData)
     // Apply the transformation
+    Utils.log("Applying the model on the weather data...")
     weatherData = model.transform(weatherData).select("AirportId", "WEATHER_TIME", "WEATHER_COND")
       .cache()
-    //Utils.log(weatherData)
+    Utils.log(weatherData)
 
-    Utils.log("joining weather data with airport data")
-    //combine flights and weather
-    val originWeatherCols = weatherData.columns.map(n => col(n).as(s"ORIGIN_$n"))
-    val originWeatherData = weatherData.select(originWeatherCols: _*)
-      .cache()
-    val destWeatherCols = weatherData.columns.map(n => col(n).as(s"DEST_$n"))
-    val destWeatherData = weatherData.select(destWeatherCols: _*)
-      .cache()
-    var airportWeatherData = flightsData.join(originWeatherData, $"ORIGIN_AIRPORT_ID" === $"ORIGIN_AirportID", "inner").drop("ORIGIN_AirportID")
-      .join(destWeatherData, $"DEST_AIRPORT_ID" === $"DEST_AirportID", "inner").drop("DEST_AirportID")
-      .cache()
-
-    Utils.log("selecting only the weather registered times before the departure and arrival")
-    // remove unnecessary weather data after the actual departure and arrival times
-    airportWeatherData = airportWeatherData.where("DEP_TIME >= ORIGIN_WEATHER_TIME AND ARR_TIME >= DEST_WEATHER_TIME")
-      .cache()
-
-    //Utils.log(airportWeatherData)
-
-    Utils.log("remove unnecessary features")
-    // for the delay (on time) analysis, we just need the weather conditions,
-    // the ontime flag and the flight id (FL_ID) in order to combine later the weather conditions of the same flight.
-    // We should remove the others columns
-    airportWeatherData = airportWeatherData.drop("ORIGIN_WEATHER_TIME", "DEST_WEATHER_TIME", "ORIGIN_AIRPORT_ID",
-      "DEST_AIRPORT_ID", "CRS_DEP_TIME", "DEP_TIME", "CRS_ARR_TIME", "ARR_TIME", "")
-      .cache()
-
-    //Utils.log(airportWeatherData)
-
-    airportWeatherData = airportWeatherData.limit(2).cache()
-
-    Utils.log("Group together the weather conditions for the same flight")
-    /*val timeWindow = Window.partitionBy("FL_ID")
-    airportWeatherData = airportWeatherData
-      .withColumn("ORIGIN_WEATHER_COND", collect_list($"ORIGIN_WEATHER_COND").over(timeWindow))
-      .withColumn("DEST_WEATHER_COND", collect_list($"DEST_WEATHER_COND").over(timeWindow))
-      .cache()*/
-
-    airportWeatherData = airportWeatherData.groupBy("FL_ID", "ORIGIN_WEATHER_COND", "DEST_WEATHER_COND")
-      .agg(max("FL_ONTIME"))
-      //.agg(collect_list($"ORIGIN_WEATHER_COND").as("ORIGIN_WEATHER_COND"))
-      //.agg(collect_list($"DEST_WEATHER_COND").as("DEST_WEATHER_COND"))
-      .cache()
-
-    Utils.log(airportWeatherData)
-
-    Utils.log("Remove the flight identifier")
-    airportWeatherData = airportWeatherData.drop("FL_ID").cache()
-
-    airportWeatherData
+    weatherData
   }
 
 }

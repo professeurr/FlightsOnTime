@@ -1,6 +1,5 @@
-weather_2013_12.csv
-ontime_reporting_2013_12.csv
 /project/
 /.idea/
 /target/
-/src/main/resources/result.txt
+/src/main/resources/data/weather/*
+/src/main/resources/data/flights/*
