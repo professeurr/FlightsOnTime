@@ -4,27 +4,24 @@ import org.apache.spark.ml.regression.DecisionTreeRegressor
 class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling) {
 
   def evaluate(): Unit = {
-/*
-
     Utils.log("Balance the dataset")
     var ontimeFlights = flightWeatherWrangling.Data.where("Fl_ONTIME = 1").cache()
-    val ontimeFlightsCount = ontimeFlights.count()
+    val ontimeFlightsCount = ontimeFlights.count().toDouble
     var delayedFlights = flightWeatherWrangling.Data.where("FL_ONTIME = 0").cache()
-    val delayedFlightsCount = delayedFlights.count()
+    val delayedFlightsCount = delayedFlights.count().toDouble
 
     Utils.log(s"nbFlights=${delayedFlightsCount + ontimeFlightsCount}")
     if (ontimeFlightsCount > delayedFlightsCount) {
-      ontimeFlights = ontimeFlights.limit(delayedFlightsCount.toInt)
+      ontimeFlights = ontimeFlights.sample(withReplacement = false, delayedFlightsCount / ontimeFlightsCount)
       Utils.log(s"nbFlights=${delayedFlightsCount * 2}")
     }
     else {
-      delayedFlights = delayedFlights.limit(ontimeFlightsCount.toInt)
-      Utils.log(s"nbFlights=${delayedFlightsCount * 2}")
+      delayedFlights = delayedFlights.sample(withReplacement = false, ontimeFlightsCount / delayedFlightsCount)
+      Utils.log(s"nbFlights=${ontimeFlightsCount * 2}")
     }
 
     flightWeatherWrangling.Data = ontimeFlights.union(delayedFlights).cache()
     Utils.log(flightWeatherWrangling.Data)
-*/
 
     Utils.log("split the dataset into training and test data")
     val Array(trainingData, testData) = flightWeatherWrangling.Data.randomSplit(Array(0.9, 0.1), 42L)
