@@ -25,6 +25,7 @@ class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling:
     OriginData = OriginData.groupBy($"FL_ID", $"FL_CRS_DEP_TIME", $"FL_ONTIME")
       .agg(Utils.fillMissingDataUdf($"FL_CRS_DEP_TIME",
         collect_list($"WEATHER_TIME"), collect_list($"WEATHER_COND"), lit(weatherTimeFrame)).as("WEATHER_COND"))
+      .filter("WEATHER_COND is not null")
       .drop("FL_CRS_DEP_TIME")
     Utils.log(OriginData)
 
@@ -38,6 +39,7 @@ class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling:
     DestinationData = DestinationData.groupBy($"FL_ID", $"FL_CRS_ARR_TIME", $"FL_ONTIME")
       .agg(Utils.fillMissingDataUdf($"FL_CRS_ARR_TIME",
         collect_list($"WEATHER_TIME"), collect_list($"WEATHER_COND"), lit(weatherTimeFrame)).as("WEATHER_COND"))
+      .filter("WEATHER_COND is not null")
       .drop("FL_CRS_ARR_TIME")
     Utils.log(DestinationData)
 
