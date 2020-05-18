@@ -1,10 +1,10 @@
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.SparkContext
+import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.joda.time.DateTime
-import scala.util.control.Breaks._
 
 object Utils {
   Logger.getLogger("org").setLevel(Level.OFF)
@@ -21,29 +21,35 @@ object Utils {
 
   val numberOfCores: Int = java.lang.Runtime.getRuntime.availableProcessors * Math.max(sc.statusTracker.getExecutorInfos.length - 1, 1)
 
-  val fillMissingDataUdf: UserDefinedFunction = udf((originTime: Long, record: Seq[Long], conds: Seq[Seq[String]], frame: Int) => {
-    var cds = List[Seq[String]]()
-    var curTime = originTime
-    breakable {
+  // fill missing weather records over frame-th hours before the flight departure.
+  // in strict mode, for a particular missing data point, only the record the precedent record is used to fill up the gap
+  // otherwise we use the closest record
+  // in the strict mode, the computed record might miss some data points, in that case, null is returned.
+  val fillMissingDataUdf: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherConds: Seq[Seq[Double]], frame: Int) => {
+    var cds: Seq[Double] = null
+    val enoughRecords = true //times.exists(t => t <= originTime - frame * 3600) //uncomment this to enable the strict filtering
+    if (enoughRecords) {
+      cds = List[Double]()
+      var curTime = originTime
       for (_ <- 1 to frame) {
-        var diff = record.filter(t => t <= curTime)
-        if (diff.isEmpty) {
-          cds = null
-          break
-        }
-        diff = diff.map(t => curTime - t)
+        val diff = times.map(t => curTime - t)
         val index = diff.indexOf(diff.min)
-        cds = cds :+ conds(index)
+        cds ++= weatherConds(index)
         curTime -= 3600
       }
     }
     cds
   })
 
+  // convert array of double to dense vector in order to feed the regressor
+  val toVector: UserDefinedFunction = udf((data: Seq[Double]) => {
+    Vectors.dense(data.toArray)
+  })
+
   def log(df: DataFrame, size: Int = 100): Unit = {
     //println(s"partitions: ${df.rdd.getNumPartitions}")
     df.printSchema()
-    df.explain(false)
+    //df.explain(false)
   }
 
   def show(df: DataFrame, size: Int = 100): Unit = {

@@ -10,21 +10,20 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling) 
     var delayedFlights = flightWeatherWrangling.Data.where("FL_ONTIME = 0").cache()
     val delayedFlightsCount = delayedFlights.count().toDouble
 
-    Utils.log(s"nbFlights=${delayedFlightsCount + ontimeFlightsCount}")
-    if (ontimeFlightsCount > delayedFlightsCount) {
+    Utils.log(s"ontimeFlightsCount=$ontimeFlightsCount, delayedFlightsCount=$delayedFlightsCount")
+    if (ontimeFlightsCount > delayedFlightsCount)
       ontimeFlights = ontimeFlights.sample(withReplacement = false, delayedFlightsCount / ontimeFlightsCount)
-      Utils.log(s"nbFlights=${delayedFlightsCount * 2}")
-    }
-    else {
+    else
       delayedFlights = delayedFlights.sample(withReplacement = false, ontimeFlightsCount / delayedFlightsCount)
-      Utils.log(s"nbFlights=${ontimeFlightsCount * 2}")
-    }
 
     flightWeatherWrangling.Data = ontimeFlights.union(delayedFlights).cache()
     Utils.log(flightWeatherWrangling.Data)
 
     Utils.log("split the dataset into training and test data")
-    val Array(trainingData, testData) = flightWeatherWrangling.Data.randomSplit(Array(0.9, 0.1), 42L)
+    var Array(trainingData, testData) = flightWeatherWrangling.Data.randomSplit(Array(0.9, 0.1), 42L)
+
+    trainingData = trainingData.cache()
+    testData = testData.cache()
 
     Utils.log("Creating DecisionTreeRegressor")
     val dt = new DecisionTreeRegressor()

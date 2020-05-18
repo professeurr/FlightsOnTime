@@ -46,7 +46,7 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
         .otherwise(concat(lit("W"), col("WindDirectionCategory").cast(IntegerType))))
       .drop("WindDirectionCategory")
 
-    val dummyWD = (0 until 10).map(i=>"W" + i).toDF("WindDirection") // use this dummy dataset to accelerate the fitting/conversion
+    val dummyWD = (0 until 10).map(i => "W" + i).toDF("WindDirection") // use this dummy dataset to accelerate the fitting/conversion
     val indexer = new StringIndexer().setInputCol("WindDirection").setOutputCol("WindDirectionIndex");
     val pipeline = new Pipeline().setStages(Array(indexer))
     val model = pipeline.fit(dummyWD)
@@ -56,7 +56,7 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
     Utils.log(Data)
 
     Utils.log("assembling weather conditions")
-    Data = Data.withColumn("WEATHER_COND", array(WeatherCondColumns.map(c => col(c)): _*))
+    Data = Data.withColumn("WEATHER_COND", array(WeatherCondColumns.map(c => col(c).cast(DoubleType)): _*))
       .drop(WeatherCondColumns: _*)
     Utils.log(Data)
 
