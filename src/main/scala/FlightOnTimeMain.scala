@@ -7,8 +7,8 @@ object FlightOnTimeMain {
     val t0 = System.nanoTime()
     Utils.log("START")
 
-    val flightsPath: String = getClass.getResource("data/flights/").getPath + "sample/*"
-    val weatherPath = getClass.getResource("data/weather/").getPath + "sample/*"
+    val flightsPath: String = getClass.getResource("data/flights/").getPath + "trash/*"
+    val weatherPath = getClass.getResource("data/weather/").getPath + "trash/*"
     val wbanAirportsPath = getClass.getResource("data/wban_airport_timezone.csv").getPath
 
     val delayThreshold = 15 // the threshold of the flight delay is set to 15 minutes by default

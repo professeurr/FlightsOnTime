@@ -1,16 +1,209 @@
-+-----+--------+----+-----------------------------------------------------------------+
-|WBAN |Date    |Time|WEATHER_COND                                                     |
-+-----+--------+----+-----------------------------------------------------------------+
-|03011|20131201|0015|[78.0, -4.0, 5.0, 21.63, 10.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0]     |
-|03011|20131201|0035|[78.0, -4.0, 3.0, 21.62, 10.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0]     |
-|03011|20131201|0055|[85.0, -5.0, 7.0, 21.62, 10.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0]     |
-|03011|20131201|0115|[81.0, -5.0, 6.0, 21.62, 10.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0]     |
-|03011|20131201|1835|[59.0, 0.0, 0.0, 21.6, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]       |
-|03011|20131201|1855|[59.0, 0.0, 0.0, 21.59, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]      |
-|03011|20131201|1915|[56.0, 0.0, 0.0, 21.6, 10.0, 0.0, 251.0, 0.0, 0.0, 0.0, 0.0]     |
-|03011|20131201|1935|[64.0, -1.0, 0.0, 21.6, 10.0, 0.0, 235.0, 0.0, 0.0, 0.0, 0.0]    |
-|03011|20131201|1955|[59.0, 0.0, 0.0, 21.61, 10.0, 0.0, 225.0, 106.0, 0.0, 0.0, 0.0]  |
-|03011|20131201|2015|[69.0, -1.0, 0.0, 21.62, 10.0, 0.0, 204.0, 0.0, 0.0, 0.0, 0.0]   |
-|03011|20131201|2035|[59.0, 0.0, 3.0, 21.6, 10.0, 7.0, 241.0, 0.0, 0.0, 0.0, 0.0]     |
-|03011|20131222|0915|[80.0, -11.0, 6.0, 21.42, 10.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0]    |
-+-----+--------+----+-----------------------------------------------------------------+
+/usr/lib/jvm/java-8-openjdk-amd64/bin/java -javaagent:/snap/intellij-idea-ultimate/222/lib/idea_rt.jar=37341:/snap/intellij-idea-ultimate/222/bin -Dfile.encoding=UTF-8 -classpath /usr/lib/jvm/java-8-openjdk-amd64/jre/lib/charsets.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/cldrdata.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/dnsns.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/icedtea-sound.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/jaccess.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/localedata.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/nashorn.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/sunec.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/sunjce_provider.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/sunpkcs11.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/zipfs.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/jce.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/jsse.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/management-agent.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/resources.jar:/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/rt.jar:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/target/scala-2.11/classes:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/antlr/antlr/2.7.7/antlr-2.7.7.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/xerial/snappy/snappy-java/1.1.7.3/snappy-java-1.1.7.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tukaani/xz/1.5/xz-1.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/modules/scala-xml_2.11/1.0.6/scala-xml_2.11-1.0.6.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/modules/scala-parser-combinators_2.11/1.1.0/scala-parser-combinators_2.11-1.1.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/roaringbitmap/shims/0.7.45/shims-0.7.45.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/roaringbitmap/RoaringBitmap/0.7.45/RoaringBitmap-0.7.45.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/objenesis/objenesis/2.5.1/objenesis-2.5.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/json4s/json4s-scalap_2.11/3.5.3/json4s-scalap_2.11-3.5.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/json4s/json4s-jackson_2.11/3.5.3/json4s-jackson_2.11-3.5.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/json4s/json4s-core_2.11/3.5.3/json4s-core_2.11-3.5.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/json4s/json4s-ast_2.11/3.5.3/json4s-ast_2.11-3.5.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/codehaus/janino/janino/3.0.9/janino-3.0.9.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/codehaus/janino/commons-compiler/3.0.9/commons-compiler-3.0.9.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/xbean/xbean-asm6-shaded/4.8/xbean-asm6-shaded-4.8.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-yarn_2.11/2.4.5/spark-yarn_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-unsafe_2.11/2.4.5/spark-unsafe_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-tags_2.11/2.4.5/spark-tags_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-streaming_2.11/2.4.5/spark-streaming_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-sql_2.11/2.4.5/spark-sql_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-sketch_2.11/2.4.5/spark-sketch_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-network-shuffle_2.11/2.4.5/spark-network-shuffle_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-network-common_2.11/2.4.5/spark-network-common_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-mllib_2.11/2.4.5/spark-mllib_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-mllib-local_2.11/2.4.5/spark-mllib-local_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-launcher_2.11/2.4.5/spark-launcher_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-kvstore_2.11/2.4.5/spark-kvstore_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-hive_2.11/2.4.5/spark-hive_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-graphx_2.11/2.4.5/spark-graphx_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-core_2.11/2.4.5/spark-core_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/spark/spark-catalyst_2.11/2.4.5/spark-catalyst_2.11-2.4.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/parquet/parquet-jackson/1.10.1/parquet-jackson-1.10.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/parquet/parquet-hadoop/1.10.1/parquet-hadoop-1.10.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/parquet/parquet-format/2.4.0/parquet-format-2.4.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/parquet/parquet-encoding/1.10.1/parquet-encoding-1.10.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/parquet/parquet-common/1.10.1/parquet-common-1.10.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/parquet/parquet-column/1.10.1/parquet-column-1.10.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/orc/orc-shims/1.5.5/orc-shims-1.5.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/orc/orc-mapreduce/1.5.5/orc-mapreduce-1.5.5-nohive.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/orc/orc-core/1.5.5/orc-core-1.5.5-nohive.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/httpcomponents/httpcore/4.4.10/httpcore-4.4.10.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-compress/1.8.1/commons-compress-1.8.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/avro/avro-mapred/1.8.2/avro-mapred-1.8.2-hadoop2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/avro/avro-ipc/1.8.2/avro-ipc-1.8.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/avro/avro/1.8.2/avro-1.8.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/arrow/arrow-vector/0.10.0/arrow-vector-0.10.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/arrow/arrow-memory/0.10.0/arrow-memory-0.10.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/arrow/arrow-format/0.10.0/arrow-format-0.10.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/net/sf/py4j/py4j/0.10.7/py4j-0.10.7.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/io/netty/netty-all/4.1.42.Final/netty-all-4.1.42.Final.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/io/airlift/aircompressor/0.10/aircompressor-0.10.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/univocity/univocity-parsers/2.7.3/univocity-parsers-2.7.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/twitter/chill_2.11/0.9.3/chill_2.11-0.9.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/twitter/chill-java/0.9.3/chill-java-0.9.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.6.7.3/jackson-databind-2.6.7.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/esotericsoftware/kryo-shaded/4.0.2/kryo-shaded-4.0.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/aopalliance/aopalliance/1.0/aopalliance-1.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/carrotsearch/hppc/0.7.2/hppc-0.7.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/chuusai/shapeless_2.11/2.3.2/shapeless_2.11-2.3.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/clearspring/analytics/stream/2.7.0/stream-2.7.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/esotericsoftware/minlog/1.3.0/minlog-1.3.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-annotations/2.6.7/jackson-annotations-2.6.7.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/2.7.9/jackson-core-2.7.9.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/fasterxml/jackson/module/jackson-module-paranamer/2.7.9/jackson-module-paranamer-2.7.9.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/fasterxml/jackson/module/jackson-module-scala_2.11/2.6.7.1/jackson-module-scala_2.11-2.6.7.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/fommil/netlib/core/1.1.2/core-1.1.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/luben/zstd-jni/1.3.2-2/zstd-jni-1.3.2-2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/rwl/jtransforms/2.4.0/jtransforms-2.4.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/code/gson/gson/2.2.4/gson-2.2.4.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/guava/16.0.1/guava-16.0.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/inject/guice/3.0/guice-3.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/inject/extensions/guice-servlet/3.0/guice-servlet-3.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/protobuf/protobuf-java/2.5.0/protobuf-java-2.5.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/googlecode/javaewah/JavaEWAH/0.3.2/JavaEWAH-0.3.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/jolbox/bonecp/0.8.0.RELEASE/bonecp-0.8.0.RELEASE.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/ning/compress-lzf/1.0.3/compress-lzf-1.0.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/thoughtworks/paranamer/paranamer/2.8/paranamer-2.8.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/twitter/parquet-hadoop-bundle/1.6.0/parquet-hadoop-bundle-1.6.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/com/vlkan/flatbuffers/1.2.0-3f79e055/flatbuffers-1.2.0-3f79e055.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-beanutils/commons-beanutils/1.7.0/commons-beanutils-1.7.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-cli/commons-cli/1.2/commons-cli-1.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-codec/commons-codec/1.10/commons-codec-1.10.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-collections/commons-collections/3.2.2/commons-collections-3.2.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-configuration/commons-configuration/1.6/commons-configuration-1.6.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-dbcp/commons-dbcp/1.4/commons-dbcp-1.4.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-digester/commons-digester/1.8/commons-digester-1.8.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-httpclient/commons-httpclient/3.1/commons-httpclient-3.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-io/commons-io/2.4/commons-io-2.4.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-lang/commons-lang/2.6/commons-lang-2.6.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-logging/commons-logging/1.2/commons-logging-1.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-net/commons-net/3.1/commons-net-3.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-pool/commons-pool/1.5.4/commons-pool-1.5.4.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/io/dropwizard/metrics/metrics-core/3.1.5/metrics-core-3.1.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/io/dropwizard/metrics/metrics-graphite/3.1.5/metrics-graphite-3.1.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/io/dropwizard/metrics/metrics-json/3.1.5/metrics-json-3.1.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/io/dropwizard/metrics/metrics-jvm/3.1.5/metrics-jvm-3.1.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/io/netty/netty/3.9.9.Final/netty-3.9.9.Final.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/activation/activation/1.1.1/activation-1.1.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/annotation/javax.annotation-api/1.2/javax.annotation-api-1.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/inject/javax.inject/1/javax.inject-1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/jdo/jdo-api/3.0.1/jdo-api-3.0.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/servlet/javax.servlet-api/3.1.0/javax.servlet-api-3.1.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/transaction/jta/1.1/jta-1.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/validation/validation-api/1.1.0.Final/validation-api-1.1.0.Final.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/ws/rs/javax.ws.rs-api/2.0.1/javax.ws.rs-api-2.0.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.2.2/jaxb-api-2.2.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/xml/stream/stax-api/1.0-2/stax-api-1.0-2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/javolution/javolution/5.5.1/javolution-5.5.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/jline/jline/0.9.94/jline-0.9.94.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/joda-time/joda-time/2.9.9/joda-time-2.9.9.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/log4j/apache-log4j-extras/1.2.17/apache-log4j-extras-1.2.17.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/log4j/log4j/1.2.17/log4j-1.2.17.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.6/mysql-connector-java-5.1.6.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/net/hydromatic/eigenbase-properties/1.1.5/eigenbase-properties-1.1.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/net/razorvine/pyrolite/4.13/pyrolite-4.13.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/net/sf/opencsv/opencsv/2.3/opencsv-2.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/net/sourceforge/f2j/arpack_combined_all/0.1/arpack_combined_all-0.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/antlr/ST4/4.0.4/ST4-4.0.4.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/antlr/antlr-runtime/3.4/antlr-runtime-3.4.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/antlr/antlr4-runtime/4.7/antlr4-runtime-4.7.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/antlr/stringtemplate/3.2.1/stringtemplate-3.2.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/calcite/calcite-avatica/1.2.0-incubating/calcite-avatica-1.2.0-incubating.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/calcite/calcite-core/1.2.0-incubating/calcite-core-1.2.0-incubating.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/calcite/calcite-linq4j/1.2.0-incubating/calcite-linq4j-1.2.0-incubating.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-crypto/1.0.0/commons-crypto-1.0.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.5/commons-lang3-3.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-math3/3.4.1/commons-math3-3.4.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/curator/curator-client/2.6.0/curator-client-2.6.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/curator/curator-framework/2.6.0/curator-framework-2.6.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/curator/curator-recipes/2.6.0/curator-recipes-2.6.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/derby/derby/10.12.1.1/derby-10.12.1.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/directory/api/api-asn1-api/1.0.0-M20/api-asn1-api-1.0.0-M20.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/directory/api/api-util/1.0.0-M20/api-util-1.0.0-M20.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/directory/server/apacheds-i18n/2.0.0-M15/apacheds-i18n-2.0.0-M15.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/directory/server/apacheds-kerberos-codec/2.0.0-M15/apacheds-kerberos-codec-2.0.0-M15.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-annotations/2.6.5/hadoop-annotations-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-auth/2.6.5/hadoop-auth-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-client/2.6.5/hadoop-client-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-common/2.6.5/hadoop-common-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-hdfs/2.6.5/hadoop-hdfs-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-mapreduce-client-app/2.6.5/hadoop-mapreduce-client-app-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-mapreduce-client-common/2.6.5/hadoop-mapreduce-client-common-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-mapreduce-client-core/2.6.5/hadoop-mapreduce-client-core-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-mapreduce-client-jobclient/2.6.5/hadoop-mapreduce-client-jobclient-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-mapreduce-client-shuffle/2.6.5/hadoop-mapreduce-client-shuffle-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-yarn-api/2.6.5/hadoop-yarn-api-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-yarn-client/2.6.5/hadoop-yarn-client-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-yarn-common/2.6.5/hadoop-yarn-common-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-yarn-server-common/2.6.5/hadoop-yarn-server-common-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-yarn-server-nodemanager/2.6.5/hadoop-yarn-server-nodemanager-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-yarn-server-web-proxy/2.6.5/hadoop-yarn-server-web-proxy-2.6.5.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/ivy/ivy/2.4.0/ivy-2.4.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/thrift/libfb303/0.9.3/libfb303-0.9.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/thrift/libthrift/0.9.3/libthrift-0.9.3.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/zookeeper/zookeeper/3.4.6/zookeeper-3.4.6.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/codehaus/jackson/jackson-core-asl/1.9.13/jackson-core-asl-1.9.13.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/codehaus/jackson/jackson-jaxrs/1.9.13/jackson-jaxrs-1.9.13.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/codehaus/jackson/jackson-mapper-asl/1.9.13/jackson-mapper-asl-1.9.13.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/codehaus/jackson/jackson-xc/1.9.13/jackson-xc-1.9.13.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/codehaus/jettison/jettison/1.1/jettison-1.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/datanucleus/datanucleus-api-jdo/3.2.6/datanucleus-api-jdo-3.2.6.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/datanucleus/datanucleus-core/3.2.10/datanucleus-core-3.2.10.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/datanucleus/datanucleus-rdbms/3.2.9/datanucleus-rdbms-3.2.9.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/fusesource/leveldbjni/leveldbjni-all/1.8/leveldbjni-all-1.8.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/hk2/hk2-api/2.4.0-b34/hk2-api-2.4.0-b34.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/hk2/hk2-locator/2.4.0-b34/hk2-locator-2.4.0-b34.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/hk2/hk2-utils/2.4.0-b34/hk2-utils-2.4.0-b34.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/hk2/osgi-resource-locator/1.0.1/osgi-resource-locator-1.0.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/hk2/external/aopalliance-repackaged/2.4.0-b34/aopalliance-repackaged-2.4.0-b34.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/hk2/external/javax.inject/2.4.0-b34/javax.inject-2.4.0-b34.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/jersey/bundles/repackaged/jersey-guava/2.22.2/jersey-guava-2.22.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/jersey/containers/jersey-container-servlet/2.22.2/jersey-container-servlet-2.22.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/jersey/containers/jersey-container-servlet-core/2.22.2/jersey-container-servlet-core-2.22.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/jersey/core/jersey-client/2.22.2/jersey-client-2.22.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/jersey/core/jersey-common/2.22.2/jersey-common-2.22.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/jersey/core/jersey-server/2.22.2/jersey-server-2.22.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/glassfish/jersey/media/jersey-media-jaxb/2.22.2/jersey-media-jaxb-2.22.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/htrace/htrace-core/3.0.4/htrace-core-3.0.4.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/iq80/snappy/snappy/0.2/snappy-0.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/javassist/javassist/3.18.1-GA/javassist-3.18.1-GA.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/jodd/jodd-core/3.5.2/jodd-core-3.5.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/lz4/lz4-java/1.4.0/lz4-java-1.4.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/mortbay/jetty/jetty/6.1.26/jetty-6.1.26.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/mortbay/jetty/jetty-util/6.1.26/jetty-util-6.1.26.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.11.8/scala-library-2.11.8.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-reflect/2.11.8/scala-reflect-2.11.8.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scalanlp/breeze-macros_2.11/0.13.2/breeze-macros_2.11-0.13.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scalanlp/breeze_2.11/0.13.2/breeze_2.11-0.13.2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/slf4j/jcl-over-slf4j/1.7.16/jcl-over-slf4j-1.7.16.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/slf4j/jul-to-slf4j/1.7.16/jul-to-slf4j-1.7.16.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/slf4j/slf4j-log4j12/1.7.16/slf4j-log4j12-1.7.16.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/spark-project/hive/hive-exec/1.2.1.spark2/hive-exec-1.2.1.spark2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/spark-project/hive/hive-metastore/1.2.1.spark2/hive-metastore-1.2.1.spark2.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/spark-project/spark/unused/1.0.0/unused-1.0.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/spire-math/spire-macros_2.11/0.13.0/spire-macros_2.11-0.13.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/spire-math/spire_2.11/0.13.0/spire_2.11-0.13.0.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/typelevel/machinist_2.11/0.6.1/machinist_2.11-0.6.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/org/typelevel/macro-compat_2.11/1.1.1/macro-compat_2.11-1.1.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/oro/oro/2.0.8/oro-2.0.8.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/stax/stax-api/1.0.1/stax-api-1.0.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/xerces/xercesImpl/2.9.1/xercesImpl-2.9.1.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/xml-apis/xml-apis/1.3.04/xml-apis-1.3.04.jar:/home/masterai/.cache/coursier/v1/https/repo1.maven.org/maven2/xmlenc/xmlenc/0.52/xmlenc-0.52.jar FlightOnTimeMain
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+[2020-05-19T19:32:18.771+02:00] START
+[2020-05-19T19:32:18.977+02:00] Loading relationship data between weather and airport data
+root
+ |-- AirportID: string (nullable = true)
+ |-- JOIN_WBAN: string (nullable = true)
+ |-- TimeZone: long (nullable = true)
+
+[2020-05-19T19:32:19.297+02:00] Loading flights data
+root
+ |-- FL_DATE: string (nullable = true)
+ |-- OP_CARRIER_AIRLINE_ID: string (nullable = true)
+ |-- OP_CARRIER_FL_NUM: string (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- CRS_DEP_TIME: string (nullable = true)
+ |-- ARR_DELAY_NEW: string (nullable = true)
+ |-- CANCELLED: string (nullable = true)
+ |-- DIVERTED: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- WEATHER_DELAY: string (nullable = true)
+ |-- NAS_DELAY: string (nullable = true)
+ |-- _c12: string (nullable = true)
+
+[2020-05-19T19:32:20.553+02:00] Removing cancelled, diverted and non-weather related delay records
+root
+ |-- FL_DATE: string (nullable = true)
+ |-- OP_CARRIER_AIRLINE_ID: string (nullable = true)
+ |-- OP_CARRIER_FL_NUM: string (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- CRS_DEP_TIME: string (nullable = true)
+ |-- ARR_DELAY_NEW: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- WEATHER_DELAY: string (nullable = true)
+ |-- NAS_DELAY: string (nullable = true)
+ |-- _c12: string (nullable = true)
+
+[2020-05-19T19:32:20.694+02:00] computing FL_ID
+root
+ |-- FL_DATE: long (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- ARR_DELAY_NEW: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- WEATHER_DELAY: string (nullable = true)
+ |-- NAS_DELAY: string (nullable = true)
+ |-- FL_ID: string (nullable = false)
+
+[2020-05-19T19:32:20.716+02:00] computing FL_ONTIME
+root
+ |-- FL_DATE: long (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+
+[2020-05-19T19:32:20.733+02:00] getting timezones of each airport
+root
+ |-- FL_DATE: long (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- TimeZone: long (nullable = true)
+
+[2020-05-19T19:32:20.745+02:00] normalizing times to UTC: FL_CRS_DEP_TIME, FL_CRS_ARR_TIME
+root
+ |-- FL_DATE: long (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+ |-- CRS_ELAPSED_TIME: string (nullable = true)
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- TimeZone: long (nullable = true)
+ |-- FL_CRS_DEP_TIME: long (nullable = true)
+ |-- FL_CRS_ARR_TIME: double (nullable = true)
+
+[2020-05-19T19:32:20.767+02:00] selecting useful columns
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- FL_CRS_DEP_TIME: long (nullable = true)
+ |-- FL_CRS_ARR_TIME: double (nullable = true)
+ |-- ORIGIN_AIRPORT_ID: string (nullable = true)
+ |-- DEST_AIRPORT_ID: string (nullable = true)
+
+[2020-05-19T19:32:20.946+02:00] Loading weather data
+root
+ |-- WBAN: string (nullable = true)
+ |-- Date: string (nullable = true)
+ |-- Time: string (nullable = true)
+ |-- RelativeHumidity: string (nullable = true)
+ |-- DryBulbCelsius: string (nullable = true)
+ |-- WindSpeed: string (nullable = true)
+ |-- StationPressure: string (nullable = true)
+ |-- Visibility: string (nullable = true)
+ |-- WindDirection: string (nullable = true)
+ |-- SkyCondition: string (nullable = true)
+
+[2020-05-19T19:32:21.197+02:00] cast variables
+[2020-05-19T19:32:21.273+02:00] splitting SkyCondition into 5 columns
+[2020-05-19T19:32:21.315+02:00] applying forward-fill on weather conditions data
+[2020-05-19T19:32:21.634+02:00] transforming WindDirection to categorical
+[2020-05-19T19:32:21.679+02:00] building stringIndex for the categorical variables
+root
+ |-- WBAN: string (nullable = true)
+ |-- Date: string (nullable = true)
+ |-- Time: string (nullable = true)
+ |-- RelativeHumidity: string (nullable = true)
+ |-- DryBulbCelsius: string (nullable = true)
+ |-- WindSpeed: string (nullable = true)
+ |-- StationPressure: string (nullable = true)
+ |-- Visibility: string (nullable = true)
+ |-- SkyConditionCategory_0: string (nullable = true)
+ |-- SkyConditionCategory_1: string (nullable = true)
+ |-- SkyConditionCategory_2: string (nullable = true)
+ |-- SkyConditionCategory_3: string (nullable = true)
+ |-- SkyConditionCategory_4: string (nullable = true)
+ |-- WindDirectionCategory: string (nullable = true)
+ |-- SkyCondition_0: double (nullable = false)
+ |-- SkyCondition_1: double (nullable = false)
+ |-- SkyCondition_2: double (nullable = false)
+ |-- SkyCondition_3: double (nullable = false)
+ |-- SkyCondition_4: double (nullable = false)
+ |-- WindDirection: double (nullable = false)
+
+[2020-05-19T19:52:11.170+02:00] assembling weather conditions
+root
+ |-- WBAN: string (nullable = true)
+ |-- Date: string (nullable = true)
+ |-- Time: string (nullable = true)
+ |-- WEATHER_COND: array (nullable = false)
+ |    |-- element: double (containsNull = true)
+
+[2020-05-19T19:52:11.187+02:00] getting timezones of each station and normalizing weather time
+root
+ |-- WBAN: string (nullable = true)
+ |-- Date: long (nullable = true)
+ |-- WEATHER_COND: array (nullable = false)
+ |    |-- element: double (containsNull = true)
+ |-- AirportID: string (nullable = true)
+ |-- TimeZone: long (nullable = true)
+ |-- WEATHER_TIME: long (nullable = true)
+
+[2020-05-19T19:52:11.196+02:00] selecting useful columns
+root
+ |-- AirportID: string (nullable = true)
+ |-- WEATHER_TIME: long (nullable = true)
+ |-- WEATHER_COND: array (nullable = false)
+ |    |-- element: double (containsNull = true)
+
+[2020-05-19T19:52:11.282+02:00] loading origin weather data
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- FL_CRS_DEP_TIME: long (nullable = true)
+ |-- WEATHER_TIME: long (nullable = true)
+ |-- WEATHER_COND: array (nullable = false)
+ |    |-- element: double (containsNull = true)
+
+[2020-05-19T19:52:11.295+02:00] building origin weather data
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- WEATHER_COND: array (nullable = true)
+ |    |-- element: double (containsNull = false)
+
+[2020-05-19T19:52:11.321+02:00] loading destination weather data
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- FL_CRS_ARR_TIME: double (nullable = true)
+ |-- WEATHER_TIME: long (nullable = true)
+ |-- WEATHER_COND: array (nullable = false)
+ |    |-- element: double (containsNull = true)
+
+[2020-05-19T19:52:11.330+02:00] building destination weather data
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- WEATHER_COND: array (nullable = true)
+ |    |-- element: double (containsNull = false)
+
+[2020-05-19T19:52:11.343+02:00] Building final dataset with origin and destination weather conditions + on-time flag
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- WEATHER_COND: vector (nullable = true)
+
+[2020-05-19T19:52:11.554+02:00] Balance the dataset
+[2020-05-19T20:16:06.400+02:00] ontimeFlightsCount=3559824.0, delayedFlightsCount=272497.0
+root
+ |-- FL_ID: string (nullable = false)
+ |-- FL_ONTIME: integer (nullable = true)
+ |-- WEATHER_COND: vector (nullable = true)
+
+[2020-05-19T20:16:06.474+02:00] split the dataset into training and test data
+[2020-05-19T20:16:06.509+02:00] Creating DecisionTreeRegressor
+[2020-05-19T20:16:06.522+02:00] Fitting the model
+[2020-05-19T20:16:33.660+02:00] predicting
+[2020-05-19T20:16:33.674+02:00] Evaluate the prediction
+[2020-05-19T20:16:37.483+02:00] Root Mean Squared Error (RMSE) on test data = 0.4737361475826018
+[2020-05-19T20:16:37.483+02:00] END: 2662 s
+
+Process finished with exit code 0

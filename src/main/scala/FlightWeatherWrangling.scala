@@ -38,7 +38,7 @@ class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling:
       .drop("FL_CRS_ARR_TIME")
     Utils.log(DestinationData)
 
-    Utils.log("Building final dataset with origin and destion weather conditions + on-time flag")
+    Utils.log("Building final dataset with origin and destination weather conditions + on-time flag")
     Data = OriginData.as("origin").join(DestinationData.as("dest"), $"origin.FL_ID" === $"dest.FL_ID")
       .select($"origin.FL_ID".as("FL_ID"), $"origin.FL_ONTIME".as("FL_ONTIME"),
         Utils.toVectorUdf(concat($"origin.WEATHER_COND", $"dest.WEATHER_COND")).as("WEATHER_COND"))
