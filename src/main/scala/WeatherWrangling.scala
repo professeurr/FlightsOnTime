@@ -30,7 +30,7 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
         Data = Data.withColumn(c, when(trim(col(c)) === "" || col(c) === "M", null).otherwise(col(c)))
     })
 
-    Utils.log("split SkyCondition into 5 columns")
+    Utils.log("splitting SkyCondition into 5 columns")
     val scRange = 0 until 5
     Data = Data.withColumn("skyCondition", Utils.skyConditionPadValueUdf(split(trim($"SkyCondition"), " "))) // pad Z
       .filter("skyCondition is not null")
