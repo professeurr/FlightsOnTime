@@ -10,8 +10,7 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
   import Utils.sparkSession.implicits._
 
   var Data: DataFrame = _
-  val WeatherCondColumns: Array[String] = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirection")
-  val WeatherCategoricalColumns: Array[String] = Array("WindDirection")
+  var WeatherCondColumns: Array[String] = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirection", "SkyCondition")
 
   def loadData(): DataFrame = {
 
@@ -31,33 +30,39 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
         Data = Data.withColumn(c, when(trim(col(c)) === "" || col(c) === "M", null).otherwise(col(c)))
     })
 
+    Utils.log("split SkyCondition into 5 columns")
+    val scRange = 0 until 5
+    Data = Data.withColumn("skyCondition", Utils.skyConditionPadValueUdf(split(trim($"SkyCondition"), " "))) // pad Z
+      .filter("skyCondition is not null")
+    Data = Data.select(Data.columns.map(c => col(c)) ++ scRange.map(i => col("SkyCondition")(i).as(s"SkyConditionCategory_$i")): _*) // split into 5 columns
+      .drop("SkyCondition")
+
     Utils.log("applying forward-fill on weather conditions data")
     val w0 = Window.partitionBy($"WBAN", $"Date").orderBy($"Time".asc)
+    WeatherCondColumns = WeatherCondColumns.filter(s => !s.equalsIgnoreCase("SkyCondition")) ++ scRange.map(i => s"SkyConditionCategory_$i")
     WeatherCondColumns.foreach(c => Data = Data.withColumn(c, last(col(c), ignoreNulls = true).over(w0)))
-    Data = Data.na.drop()
+    Data = Data.na.drop().cache() // put the data into the cache before the transformation steps
 
-    Data = Data.cache() // put the data into cache before the transformation steps
-
-    Utils.log("transform WindDirection to categorical")
+    Utils.log("transforming WindDirection to categorical")
     val splits = Array(-1, 0, 0.1, 22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5, 360)
     val bucketizer = new Bucketizer().setInputCol("WindDirection").setOutputCol("WindDirectionCategory").setSplits(splits)
     Data = bucketizer.transform(Data)
-      .withColumn("WindDirection", when(col("WindDirectionCategory") === 10, "W2")
+      .withColumn("WindDirectionCategory", when(col("WindDirectionCategory") === 10, "W2")
         .otherwise(concat(lit("W"), col("WindDirectionCategory").cast(IntegerType))))
-      .drop("WindDirectionCategory")
+      .drop("WindDirection")
 
-    val dummyWD = (0 until 10).map(i => "W" + i).toDF("WindDirection") // use this dummy dataset to accelerate the fitting/conversion
-    val indexer = new StringIndexer().setInputCol("WindDirection").setOutputCol("WindDirectionIndex");
-    val pipeline = new Pipeline().setStages(Array(indexer))
-    val model = pipeline.fit(dummyWD)
+    Utils.log("building stringIndex for the categorical variables")
+    var indexers = scRange.map(i => new StringIndexer().setInputCol(s"SkyConditionCategory_$i").setOutputCol(s"SkyCondition_$i")).toArray
+    indexers = indexers :+ new StringIndexer().setInputCol("WindDirectionCategory").setOutputCol("WindDirection")
+    val pipeline = new Pipeline().setStages(indexers)
+    val model = pipeline.fit(Data)
     Data = model.transform(Data)
-      .withColumn("WindDirection", $"WindDirectionIndex")
-      .drop("WindDirectionIndex")
     Utils.log(Data)
 
     Utils.log("assembling weather conditions")
-    Data = Data.withColumn("WEATHER_COND", array(WeatherCondColumns.map(c => col(c).cast(DoubleType)): _*))
-      .drop(WeatherCondColumns: _*)
+    val columns = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirection") ++ scRange.map(i => s"SkyCondition_$i")
+    Data = Data.withColumn("WEATHER_COND", array(columns.map(c => col(c).cast(DoubleType)): _*))
+      .drop(columns ++ scRange.map(i => s"SkyConditionCategory_$i") :+ "WindDirectionCategory": _*)
     Utils.log(Data)
 
     Utils.log("getting timezones of each station and normalizing weather time")

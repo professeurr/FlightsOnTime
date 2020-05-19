@@ -1,11 +1,7 @@
 name := "FlightsOnTime_Klouvi_Riva"
-
 version := "1.0"
-
 scalaVersion := "2.12"
-
 val sparkVersion = "2.4.5"
-
 
 resolvers ++= Seq(
   "apache-snapshots" at "https://repository.apache.org/snapshots/"

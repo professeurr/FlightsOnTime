@@ -42,8 +42,19 @@ object Utils {
   })
 
   // convert array of double to dense vector in order to feed the regressor
-  val toVector: UserDefinedFunction = udf((data: Seq[Double]) => {
+  val toVectorUdf: UserDefinedFunction = udf((data: Seq[Double]) => {
     Vectors.dense(data.toArray)
+  })
+
+  val skyConditionCategoryUdf: UserDefinedFunction = udf((items: Seq[String]) => {
+    items.toSet.toArray
+  })
+
+  val skyConditionPadValueUdf: UserDefinedFunction = udf((items: Seq[String]) => {
+    if (items == null)
+      (0 until 6).map(_ => "Z")
+    else
+      items ++ Seq.fill(5 - items.length)("Z")
   })
 
   def log(df: DataFrame, size: Int = 100): Unit = {

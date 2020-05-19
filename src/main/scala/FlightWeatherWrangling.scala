@@ -41,7 +41,7 @@ class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling:
     Utils.log("Building final dataset with origin and destion weather conditions + on-time flag")
     Data = OriginData.as("origin").join(DestinationData.as("dest"), $"origin.FL_ID" === $"dest.FL_ID")
       .select($"origin.FL_ID".as("FL_ID"), $"origin.FL_ONTIME".as("FL_ONTIME"),
-        Utils.toVector(concat($"origin.WEATHER_COND", $"dest.WEATHER_COND")).as("WEATHER_COND"))
+        Utils.toVectorUdf(concat($"origin.WEATHER_COND", $"dest.WEATHER_COND")).as("WEATHER_COND"))
     Utils.log(Data)
 
     Data = Data.cache() // cache the resulting data for being used during ML analysis
