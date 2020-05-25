@@ -58,14 +58,12 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
     val model = pipeline.fit(Data)
     Data = model.transform(Data)
     Utils.log(Data)
-    Utils.show(Data)
 
     Utils.log("assembling weather conditions")
     val columns = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirectionCategory", "WeatherTypeCategory") ++ scRange.map(i => s"SkyCondition_$i")
     Data = Data.withColumn("WEATHER_COND", array(columns.map(c => col(c).cast(DoubleType)): _*))
       .drop(columns ++ scRange.map(i => s"SkyConditionCategory_$i") :+ "WeatherType" : _*)
     Utils.log(Data)
-    Utils.show(Data)
 
     Utils.log("getting timezones of each station and normalizing weather time")
     Data = Data.withColumn("Date", unix_timestamp(concat_ws("", $"Date", $"Time"), "yyyyMMddHHmm"))
