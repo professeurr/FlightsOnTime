@@ -10,7 +10,7 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
   import Utils.sparkSession.implicits._
 
   var Data: DataFrame = _
-  var WeatherCondColumns: Array[String] = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirection", "SkyCondition")
+  var WeatherCondColumns: Array[String] = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirection", "SkyCondition", "WeatherType")
 
   def loadData(): DataFrame = {
 
@@ -52,17 +52,20 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
       .drop("WindDirection")
 
     Utils.log("building stringIndex for the SkyCondition variables")
-    val indexers = scRange.map(i => new StringIndexer().setInputCol(s"SkyConditionCategory_$i").setOutputCol(s"SkyCondition_$i"))
-    val pipeline = new Pipeline().setStages(indexers.toArray)
+    var indexers = scRange.map(i => new StringIndexer().setInputCol(s"SkyConditionCategory_$i").setOutputCol(s"SkyCondition_$i")).toArray
+    indexers :+= new StringIndexer().setInputCol("WeatherType").setOutputCol("WeatherTypeCategory")
+    val pipeline = new Pipeline().setStages(indexers)
     val model = pipeline.fit(Data)
     Data = model.transform(Data)
     Utils.log(Data)
+    Utils.show(Data)
 
     Utils.log("assembling weather conditions")
-    val columns = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirectionCategory") ++ scRange.map(i => s"SkyCondition_$i")
+    val columns = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirectionCategory", "WeatherTypeCategory") ++ scRange.map(i => s"SkyCondition_$i")
     Data = Data.withColumn("WEATHER_COND", array(columns.map(c => col(c).cast(DoubleType)): _*))
-      .drop(columns ++ scRange.map(i => s"SkyConditionCategory_$i") :+ "WindDirectionCategory": _*)
+      .drop(columns ++ scRange.map(i => s"SkyConditionCategory_$i") :+ "WeatherType" : _*)
     Utils.log(Data)
+    Utils.show(Data)
 
     Utils.log("getting timezones of each station and normalizing weather time")
     Data = Data.withColumn("Date", unix_timestamp(concat_ws("", $"Date", $"Time"), "yyyyMMddHHmm"))
