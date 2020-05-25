@@ -3,7 +3,7 @@ import org.apache.spark.ml.feature.{Bucketizer, StringIndexer}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{DoubleType, IntegerType}
+import org.apache.spark.sql.types.DoubleType
 
 class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWrangling) {
 
@@ -47,20 +47,19 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
     val splits = Array(-1, 0, 0.1, 22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5, 360)
     val bucketizer = new Bucketizer().setInputCol("WindDirection").setOutputCol("WindDirectionCategory").setSplits(splits)
     Data = bucketizer.transform(Data)
-      .withColumn("WindDirectionCategory", when(col("WindDirectionCategory") === 10, "W2")
-        .otherwise(concat(lit("W"), col("WindDirectionCategory").cast(IntegerType))))
+      .withColumn("WindDirectionCategory", when(col("WindDirectionCategory") === 10, 2)
+        .otherwise(col("WindDirectionCategory")))
       .drop("WindDirection")
 
-    Utils.log("building stringIndex for the categorical variables")
-    var indexers = scRange.map(i => new StringIndexer().setInputCol(s"SkyConditionCategory_$i").setOutputCol(s"SkyCondition_$i")).toArray
-    indexers = indexers :+ new StringIndexer().setInputCol("WindDirectionCategory").setOutputCol("WindDirection")
-    val pipeline = new Pipeline().setStages(indexers)
+    Utils.log("building stringIndex for the SkyCondition variables")
+    val indexers = scRange.map(i => new StringIndexer().setInputCol(s"SkyConditionCategory_$i").setOutputCol(s"SkyCondition_$i"))
+    val pipeline = new Pipeline().setStages(indexers.toArray)
     val model = pipeline.fit(Data)
     Data = model.transform(Data)
     Utils.log(Data)
 
     Utils.log("assembling weather conditions")
-    val columns = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirection") ++ scRange.map(i => s"SkyCondition_$i")
+    val columns = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirectionCategory") ++ scRange.map(i => s"SkyCondition_$i")
     Data = Data.withColumn("WEATHER_COND", array(columns.map(c => col(c).cast(DoubleType)): _*))
       .drop(columns ++ scRange.map(i => s"SkyConditionCategory_$i") :+ "WindDirectionCategory": _*)
     Utils.log(Data)
