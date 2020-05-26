@@ -60,8 +60,8 @@ object Utils {
   def log(df: DataFrame, size: Int = 100): Unit = {
     //println(s"partitions: ${df.rdd.getNumPartitions}")
     df.printSchema()
-    df.explain(false)
-    df.show(size, truncate = false)
+    //df.explain(false)
+    //df.show(size, truncate = false)
   }
 
   def show(df: DataFrame, size: Int = 100): Unit = {

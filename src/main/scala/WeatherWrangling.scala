@@ -60,7 +60,8 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
     Utils.log(Data)
 
     Utils.log("assembling weather conditions")
-    val columns = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirectionCategory", "WeatherTypeCategory") ++ scRange.map(i => s"SkyCondition_$i")
+    var columns = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirectionCategory", "WeatherTypeCategory")
+    columns ++= scRange.map(i => s"SkyCondition_$i")
     Data = Data.withColumn("WEATHER_COND", array(columns.map(c => col(c).cast(DoubleType)): _*))
       .drop(columns ++ scRange.map(i => s"SkyConditionCategory_$i") :+ "WeatherType": _*)
     Utils.log(Data)
@@ -75,13 +76,6 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
     Utils.log("selecting useful columns")
     Data = Data.select("AirportID", "WEATHER_TIME", "WEATHER_COND")
     Utils.log(Data)
-//
-//    Utils.log("computing features correlations")
-//    val corrData = Data.withColumn("WEATHER_COND", Utils.toVectorUdf($"WEATHER_COND"))
-//    val Row(corr: Matrix) = Correlation.corr(corrData, "WEATHER_COND").head
-//    val corrIter = Utils.sparkSession.sparkContext.parallelize(corr.rowIter.toSeq)
-//    corrIter.foreach(println)
-//    //println(s"Features correlations:\n${corr.toString(columns.length, Int.MaxValue)}")
 
     Data = Data.cache()
     Data

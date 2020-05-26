@@ -1,5 +1,5 @@
-import org.apache.spark.ml.evaluation.RegressionEvaluator
-import org.apache.spark.ml.regression.DecisionTreeRegressor
+import org.apache.spark.ml.classification.DecisionTreeClassifier
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 
 class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling) {
 
@@ -26,26 +26,40 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling) 
     testData = testData.cache()
 
     Utils.log("Creating DecisionTreeRegressor")
-    val dt = new DecisionTreeRegressor()
+    val dt = new DecisionTreeClassifier()
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
 
     Utils.log("Fitting the model")
     val dtModel = dt.fit(trainingData)
 
-    Utils.log("predicting")
+    Utils.log("predicting...")
     val predictions = dtModel.transform(testData)
 
-    val evaluator = new RegressionEvaluator()
+    val evaluator = new MulticlassClassificationEvaluator()
       .setLabelCol("FL_ONTIME")
       .setPredictionCol("prediction")
-      .setMetricName("rmse")
+      .setMetricName("accuracy")
 
     Utils.log("Evaluate the prediction")
-    val rmse = evaluator.evaluate(predictions)
+    val accuracy = evaluator.evaluate(predictions)
 
-    Utils.log(s"Root Mean Squared Error (RMSE) on test data = $rmse")
+    Utils.log("prediction result")
+    val predictionData = predictions.select("FL_ONTIME", "prediction", "rawPrediction", "probability", "FL_ID", "WEATHER_COND")
+    Utils.log(predictionData)
 
+    Utils.log("computing metrics...")
+    val truePositive = predictionData.where("FL_ONTIME=1 and prediction=1").count().toDouble
+    val falseNegative = predictionData.where("FL_ONTIME=1 and prediction=0").count().toDouble
+    val trueNegative = predictionData.where("FL_ONTIME=0 and prediction=0").count().toDouble
+    val falsePositive = predictionData.where("FL_ONTIME=0 and prediction=1").count().toDouble
+
+    val ontimeRecall = truePositive / (truePositive + falseNegative)
+    val delayedRecall = trueNegative / (trueNegative + falsePositive)
+
+    Utils.log(s"Accuracy = $accuracy")
+    Utils.log(s"Ontime Recall = $ontimeRecall")
+    Utils.log(s"Delayed Recall = $delayedRecall")
   }
 
 }
