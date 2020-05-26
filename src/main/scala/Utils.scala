@@ -32,7 +32,7 @@ object Utils {
       cds = List[Double]()
       var curTime = originTime
       for (_ <- 1 to frame) {
-        val diff = times.map(t => curTime - t)
+        val diff = times.map(t => Math.abs(curTime - t))
         val index = diff.indexOf(diff.min)
         cds ++= weatherConds(index)
         curTime -= 3600
