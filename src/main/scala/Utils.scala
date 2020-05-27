@@ -13,7 +13,7 @@ object Utils {
   // Initialize spark session.
   val sparkSession: SparkSession = SparkSession.builder()
     .appName(s"DescentGradientFETS${scala.util.Random.nextInt()}")
-    .master("local")
+    .master("local[4]")
     .getOrCreate()
 
   // Get the sparkContext from the session
@@ -25,8 +25,9 @@ object Utils {
   // in strict mode, for a particular missing data point, only the record the precedent record is used to fill up the gap
   // otherwise we use the closest record
   // in the strict mode, the computed record might miss some data points, in that case, null is returned.
-  val fillMissingDataUdf: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherConds: Seq[Seq[Double]], frame: Int) => {
+  val fillMissingDataUdf: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherConds: Seq[Seq[Double]], frame: Int, step: Int) => {
     var cds: Seq[Double] = null
+    val delta = step * 3600
     val enoughRecords = true //times.exists(t => t <= originTime - frame * 3600) //uncomment this to enable the strict filtering
     if (enoughRecords) {
       cds = List[Double]()
@@ -35,7 +36,7 @@ object Utils {
         val diff = times.map(t => Math.abs(curTime - t))
         val index = diff.indexOf(diff.min)
         cds ++= weatherConds(index)
-        curTime -= 3600
+        curTime -= delta
       }
     }
     cds

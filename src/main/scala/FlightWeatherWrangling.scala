@@ -1,7 +1,7 @@
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
-class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling: WeatherWrangling, weatherTimeFrame: Int) {
+class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling: WeatherWrangling, weatherTimeFrame: Int, weatherTimeStep: Int) {
 
   import Utils.sparkSession.implicits._
 
@@ -19,7 +19,7 @@ class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling:
     Utils.log("building origin weather data")
     OriginData = OriginData.groupBy($"FL_ID", $"FL_CRS_DEP_TIME", $"FL_ONTIME")
       .agg(Utils.fillMissingDataUdf($"FL_CRS_DEP_TIME",
-        collect_list($"WEATHER_TIME"), collect_list($"WEATHER_COND"), lit(weatherTimeFrame)).as("WEATHER_COND"))
+        collect_list($"WEATHER_TIME"), collect_list($"WEATHER_COND"), lit(weatherTimeFrame), lit(weatherTimeStep)).as("WEATHER_COND"))
       .filter("WEATHER_COND is not null")
       .drop("FL_CRS_DEP_TIME")
     Utils.log(OriginData)
@@ -33,7 +33,7 @@ class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling:
     Utils.log("building destination weather data")
     DestinationData = DestinationData.groupBy($"FL_ID", $"FL_CRS_ARR_TIME", $"FL_ONTIME")
       .agg(Utils.fillMissingDataUdf($"FL_CRS_ARR_TIME",
-        collect_list($"WEATHER_TIME"), collect_list($"WEATHER_COND"), lit(weatherTimeFrame)).as("WEATHER_COND"))
+        collect_list($"WEATHER_TIME"), collect_list($"WEATHER_COND"), lit(weatherTimeFrame), lit(weatherTimeStep)).as("WEATHER_COND"))
       .filter("WEATHER_COND is not null")
       .drop("FL_CRS_ARR_TIME")
     Utils.log(DestinationData)

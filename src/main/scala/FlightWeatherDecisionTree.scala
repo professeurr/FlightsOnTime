@@ -4,10 +4,12 @@ import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling) {
 
   def evaluate(): Unit = {
-    Utils.log("Balance the dataset")
-    var ontimeFlights = flightWeatherWrangling.Data.where("Fl_ONTIME = 1").cache()
+
+    Utils.log("Balancing the dataset")
+    var data = flightWeatherWrangling.Data
+    var ontimeFlights = data.where("Fl_ONTIME = 1").cache()
     val ontimeFlightsCount = ontimeFlights.count().toDouble
-    var delayedFlights = flightWeatherWrangling.Data.where("FL_ONTIME = 0").cache()
+    var delayedFlights = data.where("FL_ONTIME = 0").cache()
     val delayedFlightsCount = delayedFlights.count().toDouble
 
     Utils.log(s"ontimeFlightsCount=$ontimeFlightsCount, delayedFlightsCount=$delayedFlightsCount")
@@ -16,48 +18,46 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling) 
     else
       delayedFlights = delayedFlights.sample(withReplacement = false, ontimeFlightsCount / delayedFlightsCount)
 
-    flightWeatherWrangling.Data = ontimeFlights.union(delayedFlights).cache()
-    Utils.log(flightWeatherWrangling.Data)
+    data = ontimeFlights.union(delayedFlights).cache()
+    Utils.log(data)
 
     Utils.log("split the dataset into training and test data")
-    var Array(trainingData, testData) = flightWeatherWrangling.Data.randomSplit(Array(0.9, 0.1), 42L)
+    var Array(trainingData, testData) = data.randomSplit(Array(0.75, 0.25))
 
     trainingData = trainingData.cache()
     testData = testData.cache()
 
-    Utils.log("Creating DecisionTreeRegressor")
-    val dt = new DecisionTreeClassifier()
+    Utils.log("Training DecisionTreeClassifier model on the training data")
+    val model = new DecisionTreeClassifier()
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
+    val trainedModel = model.fit(trainingData)
 
-    Utils.log("Fitting the model")
-    val dtModel = dt.fit(trainingData)
-
-    Utils.log("predicting...")
-    val predictions = dtModel.transform(testData)
-
+    Utils.log("evaluating the model on the test data...")
+    var predictions = trainedModel.transform(testData)
     val evaluator = new MulticlassClassificationEvaluator()
       .setLabelCol("FL_ONTIME")
       .setPredictionCol("prediction")
       .setMetricName("accuracy")
-
-    Utils.log("Evaluate the prediction")
     val accuracy = evaluator.evaluate(predictions)
 
-    Utils.log("prediction result")
-    val predictionData = predictions.select("FL_ONTIME", "prediction", "rawPrediction", "probability", "FL_ID", "WEATHER_COND")
-    Utils.log(predictionData)
+    predictions = predictions.select("FL_ONTIME", "prediction", "rawPrediction", "probability", "FL_ID", "WEATHER_COND")
+    Utils.log(predictions)
 
     Utils.log("computing metrics...")
-    val truePositive = predictionData.where("FL_ONTIME=1 and prediction=1").count().toDouble
-    val falseNegative = predictionData.where("FL_ONTIME=1 and prediction=0").count().toDouble
-    val trueNegative = predictionData.where("FL_ONTIME=0 and prediction=0").count().toDouble
-    val falsePositive = predictionData.where("FL_ONTIME=0 and prediction=1").count().toDouble
+    val ontimePositive = predictions.where("FL_ONTIME=1 and prediction=1").count().toDouble
+    val ontimeNegative = predictions.where("FL_ONTIME=1 and prediction=0").count().toDouble
+    val delayedPositive = predictions.where("FL_ONTIME=0 and prediction=0").count().toDouble
+    val delayedNegative = predictions.where("FL_ONTIME=0 and prediction=1").count().toDouble
 
-    val ontimeRecall = truePositive / (truePositive + falseNegative)
-    val delayedRecall = trueNegative / (trueNegative + falsePositive)
+    val ontimePrecision = ontimePositive / (ontimePositive + delayedNegative)
+    val delayedPrecision = delayedPositive / (delayedPositive + ontimeNegative)
+    val ontimeRecall = ontimePositive / (ontimePositive + ontimeNegative)
+    val delayedRecall = delayedPositive / (delayedPositive + delayedNegative)
 
     Utils.log(s"Accuracy = $accuracy")
+    Utils.log(s"Ontime Precision = $ontimePrecision")
+    Utils.log(s"Delayed Precision = $delayedPrecision")
     Utils.log(s"Ontime Recall = $ontimeRecall")
     Utils.log(s"Delayed Recall = $delayedRecall")
   }

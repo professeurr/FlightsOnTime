@@ -11,11 +11,13 @@ object FlightOnTimeMain {
     val weatherPath = getClass.getResource("data/weather/").getPath + "sample/*"
     val wbanAirportsPath = getClass.getResource("data/wban_airport_timezone.csv").getPath
 
-    val delayThreshold = 15 // the threshold of the flight delay is set to 15 minutes by default
+    val delayThreshold = 90 // the threshold of the flight delay is set to 15 minutes by default
     val partitions = Math.max(Utils.numberOfCores - 1, 1) // number of cores available on the cluster
     val weatherTimeFrame = 12 // 12h
+    val weatherTimeStep = 1
     Utils.sparkSession.conf.set("spark.sql.shuffle.partitions", partitions)
     Utils.sparkSession.conf.set("spark.executor.cores", partitions)
+    Utils.sparkSession.conf.set("spark.executor.instances", partitions)
 
     val airportWbanWrangling = new AirportWbanWrangling(wbanAirportsPath)
     airportWbanWrangling.loadData()
@@ -26,7 +28,7 @@ object FlightOnTimeMain {
     val weatherWrangling = new WeatherWrangling(weatherPath, airportWbanWrangling)
     weatherWrangling.loadData()
 
-    val flightWeatherWrangling = new FlightWeatherWrangling(flightWrangling, weatherWrangling, weatherTimeFrame)
+    val flightWeatherWrangling = new FlightWeatherWrangling(flightWrangling, weatherWrangling, weatherTimeFrame, weatherTimeStep)
     flightWeatherWrangling.loadData()
 
     val flightWeatherDecisionTree = new FlightWeatherDecisionTree(flightWeatherWrangling)
