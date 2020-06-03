@@ -12,17 +12,4 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion % "compile"
   ,"org.apache.spark" %% "spark-sql" % sparkVersion % "compile"
   ,"org.apache.spark" %% "spark-mllib" % sparkVersion % "compile"
-  //,"org.apache.commons" %% "commons-lang3" % "3.8" % "snapshot"
 )
-
-/*
-lazy val pushPackageTask = TaskKey[Unit]("pushPackage", "Push compiled package to cluster")
-
-pushPackageTask := {
-  import sys.process._
-  Seq("scp", "-i ~/.ssh/id_rsa_user159 -P 993  run.sh user159@www.lamsade.dauphine.fr:~/")
-  Seq("scp", "-i ~/.ssh/id_rsa_user159 -P 993  target/scala-2.11/scala_2.11-0.1.jar user159@www.lamsade.dauphine.fr:~/")!
-}
-
-`package` := (pushPackageTask dependsOn `package`).value
-*/
