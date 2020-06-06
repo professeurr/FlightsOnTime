@@ -21,17 +21,18 @@ object Utils {
 
   lazy val sparkSession: SparkSession = SparkSession.builder()
     .appName(s"FlightOnTime${scala.util.Random.nextInt()}")
-    .master(config.cluster)
+    //.master(config.cluster)
     .getOrCreate()
 
   def initialize: Configuration = {
     // Import default formats
     implicit val formats: DefaultFormats.type = DefaultFormats
 
-    val path = Paths.get("./config.json").normalize()
-    val configFile = path.toString
+    Utils.log("loading configuration...")
+    val configFile = "config.json"
+    val path = Paths.get(configFile).normalize()
     if (!Files.exists(path))
-      throw new Exception(s"configuration file '${configFile}' does not exist. It should be placed in the working directory or provided as argument.")
+      throw new Exception(s"configuration file '${configFile}' does not exist. It should be placed in the working directory.")
 
     Utils.log(s"configuration file '${path.toString}' is provided, let's initialize the session.")
     val f = Source.fromFile(configFile)
