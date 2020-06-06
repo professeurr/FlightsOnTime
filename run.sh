@@ -1,5 +1,5 @@
 spark-submit \
-  --master spark://acxkodjolpt:7077 \
+  --master $1 \
   --deploy-mode cluster \
   --executor-cores 7 \
   --executor-memory 14G \
