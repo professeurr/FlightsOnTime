@@ -1,8 +1,11 @@
+import org.apache.log4j.Logger
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.broadcast
 import org.apache.spark.sql.types.{LongType, StringType, StructField, StructType}
 
 class AirportWbanWrangling(val path: String) {
+
+  @transient lazy val logger: Logger = Logger.getLogger(getClass.getName)
 
   import Utils.sparkSession.implicits._
 
@@ -14,7 +17,7 @@ class AirportWbanWrangling(val path: String) {
   var Data: DataFrame = _
 
   def loadData(): DataFrame = {
-    Utils.log("Loading relationship data between weather and airport data")
+    logger.info(s"Loading relationship data between weather and airport data from $path")
     Data = Utils.sparkSession.read.format("csv")
       .option("header", "true")
       .option("inferSchema", "false")
@@ -24,7 +27,7 @@ class AirportWbanWrangling(val path: String) {
       .withColumnRenamed("WBAN", "JOIN_WBAN")
 
     Data = broadcast(Data) // broadcast this dataset which small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
-    Utils.log(Data)
+    logger.info(Data)
 
     Data
   }

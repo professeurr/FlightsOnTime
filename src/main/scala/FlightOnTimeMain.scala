@@ -1,11 +1,13 @@
-
+import org.apache.log4j.Logger
 
 object FlightOnTimeMain {
+
+  @transient lazy val logger: Logger = Logger.getLogger(getClass.getName)
 
   def main(args: Array[String]): Unit = {
 
     val t0 = System.nanoTime()
-    Utils.log("START")
+    logger.info("[START]")
 
     try {
 
@@ -23,15 +25,15 @@ object FlightOnTimeMain {
       val flightWeatherWrangling = new FlightWeatherWrangling(flightWrangling, weatherWrangling, config.weatherTimeFrame, config.weatherTimeStep)
       flightWeatherWrangling.loadData()
 
-      val flightWeatherDecisionTree = new FlightWeatherDecisionTree(flightWeatherWrangling)
+      val flightWeatherDecisionTree = new FlightWeatherDecisionTree(flightWeatherWrangling, config.modelPath)
       flightWeatherDecisionTree.evaluate()
 
     } catch {
       case e: Exception =>
-        Utils.log(e.toString)
+        logger.info(e.toString)
         Utils.destroy()
     }
 
-    Utils.log(s"END: ${(System.nanoTime() - t0) / 1000000000} s")
+    logger.info(s"[END: ${(System.nanoTime() - t0) / 1000000000} s]")
   }
 }

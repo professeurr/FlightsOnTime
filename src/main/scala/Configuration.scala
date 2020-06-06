@@ -5,5 +5,6 @@ case class Configuration(cluster: String,
                          flightsDelayThreshold: Int,
                          weatherPath: String,
                          weatherTimeFrame: Int,
-                         weatherTimeStep: Int
+                         weatherTimeStep: Int,
+                         modelPath: String
                         )

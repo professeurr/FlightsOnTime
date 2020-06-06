@@ -1,41 +1,44 @@
+import org.apache.log4j.Logger
 import org.apache.spark.ml.classification.DecisionTreeClassifier
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 
-class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling) {
+class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling, outputPath: String) {
+
+  @transient lazy val logger: Logger = Logger.getLogger(getClass.getName)
 
   def evaluate(): Unit = {
 
-    Utils.log("Balancing the dataset")
+    logger.info("Balancing the dataset")
     var data = flightWeatherWrangling.Data
     var ontimeFlights = data.where("Fl_ONTIME = 1").cache()
     val ontimeFlightsCount = ontimeFlights.count().toDouble
     var delayedFlights = data.where("FL_ONTIME = 0").cache()
     val delayedFlightsCount = delayedFlights.count().toDouble
 
-    Utils.log(s"ontimeFlightsCount=$ontimeFlightsCount, delayedFlightsCount=$delayedFlightsCount")
+    logger.info(s"ontimeFlightsCount=$ontimeFlightsCount, delayedFlightsCount=$delayedFlightsCount")
     if (ontimeFlightsCount > delayedFlightsCount)
       ontimeFlights = ontimeFlights.sample(withReplacement = false, delayedFlightsCount / ontimeFlightsCount)
     else
       delayedFlights = delayedFlights.sample(withReplacement = false, ontimeFlightsCount / delayedFlightsCount)
 
     data = ontimeFlights.union(delayedFlights).cache()
-    Utils.log(data)
+    logger.info(data)
 
-    Utils.log("split the dataset into training and test data")
+    logger.info("split the dataset into training and test data")
     var Array(trainingData, testData) = data.randomSplit(Array(0.75, 0.25))
 
     trainingData = trainingData.cache()
     testData = testData.cache()
 
-    Utils.log("Training DecisionTreeClassifier model on the training data")
+    logger.info("Training DecisionTreeClassifier model on the training data")
     val model = new DecisionTreeClassifier()
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
     val trainedModel = model.fit(trainingData)
 
-    trainedModel.save("model.h5")
+    trainedModel.write.overwrite().save(outputPath)
 
-    Utils.log("evaluating the model on the test data...")
+    logger.info("evaluating the model on the test data...")
     var predictions = trainedModel.transform(testData)
     val evaluator = new MulticlassClassificationEvaluator()
       .setLabelCol("FL_ONTIME")
@@ -44,9 +47,9 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling) 
     val accuracy = evaluator.evaluate(predictions)
 
     predictions = predictions.select("FL_ONTIME", "prediction", "rawPrediction", "probability", "FL_ID", "WEATHER_COND")
-    Utils.log(predictions)
+    logger.info(predictions)
 
-    Utils.log("computing metrics...")
+    logger.info("computing metrics...")
     val ontimePositive = predictions.where("FL_ONTIME=1 and prediction=1").count().toDouble
     val ontimeNegative = predictions.where("FL_ONTIME=1 and prediction=0").count().toDouble
     val delayedPositive = predictions.where("FL_ONTIME=0 and prediction=0").count().toDouble
@@ -57,11 +60,11 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling) 
     val ontimeRecall = ontimePositive / (ontimePositive + ontimeNegative)
     val delayedRecall = delayedPositive / (delayedPositive + delayedNegative)
 
-    Utils.log(s"Accuracy = $accuracy")
-    Utils.log(s"Ontime Precision = $ontimePrecision")
-    Utils.log(s"Delayed Precision = $delayedPrecision")
-    Utils.log(s"Ontime Recall = $ontimeRecall")
-    Utils.log(s"Delayed Recall = $delayedRecall")
+    logger.info(s"Accuracy = $accuracy")
+    logger.info(s"Ontime Precision = $ontimePrecision")
+    logger.info(s"Delayed Precision = $delayedPrecision")
+    logger.info(s"Ontime Recall = $ontimeRecall")
+    logger.info(s"Delayed Recall = $delayedRecall")
   }
 
 }
