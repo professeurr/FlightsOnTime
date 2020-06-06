@@ -47,8 +47,8 @@ object Utils {
       else config.numberOfCores
     val partitions = Math.max(cores - 1, 1)
     sparkSession.conf.set("spark.sql.shuffle.partitions", partitions)
-    sparkSession.conf.set("spark.executor.cores", partitions)
-    sparkSession.conf.set("spark.executor.instances", partitions)
+    //sparkSession.conf.set("spark.executor.cores", partitions)
+    //sparkSession.conf.set("spark.executor.instances", partitions)
 
     config
   }
