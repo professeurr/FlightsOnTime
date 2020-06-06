@@ -1,25 +1,62 @@
+import java.nio.file.{Files, Paths}
+
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.SparkContext
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.joda.time.DateTime
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
+
+import scala.io.Source
 
 object Utils {
+
+  @transient lazy val logger: Logger = Logger.getLogger(getClass.getName)
+
   Logger.getLogger("org").setLevel(Level.OFF)
   Logger.getLogger("akka").setLevel(Level.OFF)
 
-  // Initialize spark session.
-  val sparkSession: SparkSession = SparkSession.builder()
-    .appName(s"DescentGradientFETS${scala.util.Random.nextInt()}")
-    .master("local[4]")
+  var config: Configuration = initialize
+
+  lazy val sparkSession: SparkSession = SparkSession.builder()
+    .appName(s"FlightOnTime${scala.util.Random.nextInt()}")
+    .master(config.cluster)
     .getOrCreate()
 
-  // Get the sparkContext from the session
-  val sc: SparkContext = sparkSession.sparkContext
+  def initialize: Configuration = {
+    // Import default formats
+    implicit val formats: DefaultFormats.type = DefaultFormats
 
-  val numberOfCores: Int = java.lang.Runtime.getRuntime.availableProcessors * Math.max(sc.statusTracker.getExecutorInfos.length - 1, 1)
+    val path = Paths.get("./config.json").normalize()
+    val configFile = path.toString
+    if (!Files.exists(path))
+      throw new Exception(s"configuration file '${configFile}' does not exist. It should be placed in the working directory or provided as argument.")
+
+    Utils.log(s"configuration file '${path.toString}' is provided, let's initialize the session.")
+    val f = Source.fromFile(configFile)
+    // Parse config file into Configuration object
+    val json = parse(f.getLines().mkString)
+    config = json.camelizeKeys.extract[Configuration]
+    f.close()
+
+    val cores =
+      if (config.numberOfCores <= 0)
+        java.lang.Runtime.getRuntime.availableProcessors * Math.max(sparkSession.sparkContext.statusTracker.getExecutorInfos.length - 1, 1)
+      else config.numberOfCores
+    val partitions = Math.max(cores - 1, 1)
+    sparkSession.conf.set("spark.sql.shuffle.partitions", partitions)
+    sparkSession.conf.set("spark.executor.cores", partitions)
+    sparkSession.conf.set("spark.executor.instances", partitions)
+
+    config
+  }
+
+  def destroy(): Unit = {
+    if (sparkSession != null) {
+      sparkSession.close()
+    }
+  }
 
   // fill missing weather records over frame-th hours before the flight departure.
   // in strict mode, for a particular missing data point, only the record the precedent record is used to fill up the gap
@@ -71,8 +108,7 @@ object Utils {
   }
 
   def log(str: String): Unit = {
-    println(s"[${DateTime.now()}] $str")
+    logger.info(s"$str")
   }
 
-// Test Git
 }

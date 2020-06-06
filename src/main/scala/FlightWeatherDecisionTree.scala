@@ -33,6 +33,8 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling) 
       .setFeaturesCol("WEATHER_COND")
     val trainedModel = model.fit(trainingData)
 
+    trainedModel.save("model.h5")
+
     Utils.log("evaluating the model on the test data...")
     var predictions = trainedModel.transform(testData)
     val evaluator = new MulticlassClassificationEvaluator()
