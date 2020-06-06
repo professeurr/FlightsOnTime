@@ -40,5 +40,4 @@ object UtilUdfs extends Serializable {
     else
       items ++ Seq.fill(5 - items.length)("Z")
   })
-
 }

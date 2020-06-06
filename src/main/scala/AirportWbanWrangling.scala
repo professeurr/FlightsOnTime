@@ -27,7 +27,7 @@ class AirportWbanWrangling(val path: String) {
       .withColumnRenamed("WBAN", "JOIN_WBAN")
 
     Data = broadcast(Data) // broadcast this dataset which small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
-    logger.info(Data)
+    logger.info(Data.schema.treeString)
 
     Data
   }

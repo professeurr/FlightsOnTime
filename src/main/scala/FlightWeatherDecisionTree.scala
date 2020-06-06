@@ -22,7 +22,7 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling, 
       delayedFlights = delayedFlights.sample(withReplacement = false, ontimeFlightsCount / delayedFlightsCount)
 
     data = ontimeFlights.union(delayedFlights).cache()
-    logger.info(data)
+    logger.info(data.schema.treeString)
 
     logger.info("split the dataset into training and test data")
     var Array(trainingData, testData) = data.randomSplit(Array(0.75, 0.25))

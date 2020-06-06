@@ -23,7 +23,7 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
       .option("inferSchema", "false")
       .load(path)
       .select(col("WBAN") +: col("Date") +: col("Time") +: WeatherCondColumns.map(c => col(c)): _*)
-    logger.info(Data)
+    logger.info(Data.schema.treeString)
 
     logger.info("cast variables")
     WeatherCondColumns.foreach(c => {
@@ -60,25 +60,25 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
     val pipeline = new Pipeline().setStages(indexers)
     val model = pipeline.fit(Data)
     Data = model.transform(Data)
-    logger.info(Data)
+    logger.info(Data.schema.treeString)
 
     logger.info("assembling weather conditions")
     var columns = Array("RelativeHumidity", "DryBulbCelsius", "WindSpeed", "StationPressure", "Visibility", "WindDirectionCategory", "WeatherTypeCategory")
     columns ++= scRange.map(i => s"SkyCondition_$i")
     Data = Data.withColumn("WEATHER_COND", array(columns.map(c => col(c).cast(DoubleType)): _*))
       .drop(columns ++ scRange.map(i => s"SkyConditionCategory_$i") :+ "WeatherType": _*)
-    logger.info(Data)
+    logger.info(Data.schema.treeString)
 
     logger.info("getting timezones of each station and normalizing weather time")
     Data = Data.withColumn("Date", unix_timestamp(concat_ws("", $"Date", $"Time"), "yyyyMMddHHmm"))
       .join(airportWbanWrangling.Data, $"JOIN_WBAN" === $"WBAN", "inner")
       .withColumn("WEATHER_TIME", $"Date".minus($"TimeZone"))
       .drop("Time", "JOIN_WBAN", "Date")
-    logger.info(Data)
+    logger.info(Data.schema.treeString)
 
     logger.info("selecting useful columns")
     Data = Data.select("AirportID", "WEATHER_TIME", "WEATHER_COND")
-    logger.info(Data)
+    logger.info(Data.schema.treeString)
 
     Data = Data.cache()
     Data
