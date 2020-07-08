@@ -18,7 +18,6 @@ object Utils {
 
   lazy val sparkSession: SparkSession = SparkSession.builder()
     .appName(s"FlightOnTime${scala.util.Random.nextInt()}")
-    //.master(config.cluster)
     .getOrCreate()
 
   def initialize: Configuration = {
@@ -43,9 +42,8 @@ object Utils {
         java.lang.Runtime.getRuntime.availableProcessors * Math.max(sparkSession.sparkContext.statusTracker.getExecutorInfos.length - 1, 1)
       else config.numberOfCores
     val partitions = Math.max(cores - 1, 1)
+    logger.info(s"shuffle partitions: $partitions")
     sparkSession.conf.set("spark.sql.shuffle.partitions", partitions)
-    //sparkSession.conf.set("spark.executor.cores", partitions)
-    //sparkSession.conf.set("spark.executor.instances", partitions)
 
     logger.info("configuration loaded")
     config
@@ -60,7 +58,7 @@ object Utils {
   def log(df: DataFrame, size: Int = 100): Unit = {
     //println(s"partitions: ${df.rdd.getNumPartitions}")
     df.printSchema()
-    //df.explain(false)
+    df.explain(false)
     //df.show(size, truncate = false)
   }
 

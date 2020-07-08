@@ -18,9 +18,11 @@ object FlightOnTimeMain {
 
       val flightWrangling = new FlightWrangling(config.flightsPath, airportWbanWrangling, config.flightsDelayThreshold)
       flightWrangling.loadData()
+      logger.info(s"flights data after wrangling: ${flightWrangling.Data.count()}")
 
       val weatherWrangling = new WeatherWrangling(config.weatherPath, airportWbanWrangling)
       weatherWrangling.loadData()
+      logger.info(s"weather data after wrangling: ${weatherWrangling.Data.count()}")
 
       val flightWeatherWrangling = new FlightWeatherWrangling(flightWrangling, weatherWrangling, config.weatherTimeFrame, config.weatherTimeStep)
       flightWeatherWrangling.loadData()

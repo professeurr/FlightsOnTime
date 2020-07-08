@@ -28,6 +28,7 @@ class AirportWbanWrangling(val path: String) {
 
     Data = broadcast(Data) // broadcast this dataset which small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
     logger.info(Data.schema.treeString)
+    logger.info(s"partitions: ${Data.rdd.getNumPartitions}")
 
     Data
   }

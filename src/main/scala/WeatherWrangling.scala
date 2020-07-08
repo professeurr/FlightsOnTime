@@ -33,6 +33,7 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
         Data = Data.withColumn(c, when(trim(col(c)) === "" || col(c) === "M", null).otherwise(col(c)))
     })
 
+    logger.info(s"data partitions: ${Data.rdd.getNumPartitions}")
     logger.info("splitting SkyCondition into 5 columns")
     val scRange = 0 until 5
     Data = Data.withColumn("skyCondition", UtilUdfs.skyConditionPadValueUdf(split(trim($"SkyCondition"), " "))) // pad Z
@@ -44,7 +45,10 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
     val w0 = Window.partitionBy($"WBAN", $"Date").orderBy($"Time".asc)
     WeatherCondColumns = WeatherCondColumns.filter(s => !s.equalsIgnoreCase("SkyCondition")) ++ scRange.map(i => s"SkyConditionCategory_$i")
     WeatherCondColumns.foreach(c => Data = Data.withColumn(c, last(col(c), ignoreNulls = true).over(w0)))
+
+    logger.info(s"weather data before na.drop(): ${Data.count()}")
     Data = Data.na.drop().cache() // put the data into the cache before the transformation steps
+    logger.info(s"weather data after na.drop(): ${Data.count()}")
 
     logger.info("transforming WindDirection to categorical")
     val splits = Array(-1, 0, 0.1, 22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5, 360)
@@ -55,6 +59,7 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
       .drop("WindDirection")
 
     logger.info("building stringIndex for the SkyCondition variables")
+    logger.info(s"data partitions: ${Data.rdd.getNumPartitions}")
     var indexers = scRange.map(i => new StringIndexer().setInputCol(s"SkyConditionCategory_$i").setOutputCol(s"SkyCondition_$i")).toArray
     indexers :+= new StringIndexer().setInputCol("WeatherType").setOutputCol("WeatherTypeCategory")
     val pipeline = new Pipeline().setStages(indexers)

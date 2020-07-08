@@ -15,6 +15,7 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling, 
     var delayedFlights = data.where("FL_ONTIME = 0").cache()
     val delayedFlightsCount = delayedFlights.count().toDouble
 
+    logger.info(s"data before ML: ${data.count()}")
     logger.info(s"ontimeFlightsCount=$ontimeFlightsCount, delayedFlightsCount=$delayedFlightsCount")
     if (ontimeFlightsCount > delayedFlightsCount)
       ontimeFlights = ontimeFlights.sample(withReplacement = false, delayedFlightsCount / ontimeFlightsCount)

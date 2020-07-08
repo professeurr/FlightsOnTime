@@ -22,10 +22,12 @@ class FlightWrangling(val path: String, val airportWbanWrangling: AirportWbanWra
 
     // remove cancelled and diverted data
     logger.info("Removing cancelled, diverted and non-weather related delay records")
+    logger.info(s"before cancelled ${Data.count()}")
     Data = Data.filter("CANCELLED <> \"1\" or DIVERTED <> \"1\"")
       .filter(s"NOT(ARR_DELAY_NEW > $delayThreshold and  WEATHER_DELAY < $delayThreshold and NAS_DELAY < $delayThreshold)")
       .drop("CANCELLED", "DIVERTED")
     logger.info(Data.schema.treeString)
+    logger.info(s"after cancelled ${Data.count()}")
 
     logger.info("computing FL_ID")
     Data = Data.withColumn("FL_DATE", unix_timestamp(concat_ws("", $"FL_DATE", $"CRS_DEP_TIME"), "yyyy-MM-ddHHmm"))
