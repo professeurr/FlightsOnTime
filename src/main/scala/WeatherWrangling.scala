@@ -41,8 +41,15 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
     Data = Data.select(Data.columns.map(c => col(c)) ++ scRange.map(i => col("SkyCondition")(i).as(s"SkyConditionCategory_$i")): _*) // split into 5 columns
       .drop("SkyCondition")
 
+    logger.info("getting timezones of each station and normalizing weather time")
+    Data = Data.withColumn("Date", unix_timestamp(concat_ws("", $"Date", $"Time"), "yyyyMMddHHmm"))
+      .join(airportWbanWrangling.Data, $"JOIN_WBAN" === $"WBAN", "inner")
+      .withColumn("WEATHER_TIME", $"Date".minus($"TimeZone"))
+      .drop("Time", "JOIN_WBAN", "Date")
+    logger.info(Data.schema.treeString)
+
     logger.info("applying forward-fill on weather conditions data")
-    val w0 = Window.partitionBy($"WBAN", $"Date").orderBy($"Time".asc)
+    val w0 = Window.partitionBy($"WBAN").orderBy($"WEATHER_TIME".asc)
     WeatherCondColumns = WeatherCondColumns.filter(s => !s.equalsIgnoreCase("SkyCondition")) ++ scRange.map(i => s"SkyConditionCategory_$i")
     WeatherCondColumns.foreach(c => Data = Data.withColumn(c, last(col(c), ignoreNulls = true).over(w0)))
 
@@ -72,13 +79,6 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
     columns ++= scRange.map(i => s"SkyCondition_$i")
     Data = Data.withColumn("WEATHER_COND", array(columns.map(c => col(c).cast(DoubleType)): _*))
       .drop(columns ++ scRange.map(i => s"SkyConditionCategory_$i") :+ "WeatherType": _*)
-    logger.info(Data.schema.treeString)
-
-    logger.info("getting timezones of each station and normalizing weather time")
-    Data = Data.withColumn("Date", unix_timestamp(concat_ws("", $"Date", $"Time"), "yyyyMMddHHmm"))
-      .join(airportWbanWrangling.Data, $"JOIN_WBAN" === $"WBAN", "inner")
-      .withColumn("WEATHER_TIME", $"Date".minus($"TimeZone"))
-      .drop("Time", "JOIN_WBAN", "Date")
     logger.info(Data.schema.treeString)
 
     logger.info("selecting useful columns")

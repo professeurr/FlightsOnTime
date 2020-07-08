@@ -44,7 +44,7 @@ object Utils {
     val partitions = Math.max(cores - 1, 1)
     logger.info(s"shuffle partitions: $partitions")
     sparkSession.conf.set("spark.sql.shuffle.partitions", partitions)
-
+    //sparkSession.conf.set("spark.driver.bindAddress", "127.0.0.1")
     logger.info("configuration loaded")
     config
   }
