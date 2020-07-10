@@ -59,6 +59,15 @@ class FlightWrangling(val path: String, val airportWbanWrangling: AirportWbanWra
     logger.info(Data.schema.treeString)
 
     Data = Data.cache()
+    val data = Data
+    var ontimeFlights = data.where("Fl_ONTIME = 1").cache()
+    val ontimeFlightsCount = ontimeFlights.count().toDouble
+    var delayedFlights = data.where("FL_ONTIME = 0").cache()
+    val delayedFlightsCount = delayedFlights.count().toDouble
+
+    logger.info(s"flights data: ${data.count()}")
+    logger.info(s"ontimeFlightsCount=$ontimeFlightsCount")
+    logger.info(s"delayedFlightsCount=$delayedFlightsCount")
 
     Data
   }

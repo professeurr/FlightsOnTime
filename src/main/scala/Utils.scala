@@ -44,7 +44,6 @@ object Utils {
     val partitions = Math.max(cores - 1, 1)
     logger.info(s"shuffle partitions: $partitions")
     sparkSession.conf.set("spark.sql.shuffle.partitions", partitions)
-    //sparkSession.conf.set("spark.driver.bindAddress", "127.0.0.1")
     logger.info("configuration loaded")
     config
   }
@@ -57,8 +56,8 @@ object Utils {
 
   def log(df: DataFrame, size: Int = 100): Unit = {
     //println(s"partitions: ${df.rdd.getNumPartitions}")
-    df.printSchema()
-    df.explain(false)
+    //df.printSchema()
+    //df.explain(false)
     //df.show(size, truncate = false)
   }
 
