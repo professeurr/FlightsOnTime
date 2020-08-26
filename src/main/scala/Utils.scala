@@ -21,6 +21,10 @@ object Utils {
     .getOrCreate()
 
   def initialize: Configuration = {
+    if (sparkSession == null) {
+      logger.error("Spark session is not created.")
+      throw new Exception("Spark session is not created.");
+    }
     // Import default formats
     implicit val formats: DefaultFormats.type = DefaultFormats
 
@@ -59,6 +63,12 @@ object Utils {
     //df.printSchema()
     //df.explain(false)
     //df.show(size, truncate = false)
+  }
+
+  def log(logger: Logger, text: String, dataFrame: DataFrame): Unit = {
+    logger.info(dataFrame.schema.treeString)
+    logger.info(s"$text: ${dataFrame.count()}")
+    dataFrame.show(truncate = false)
   }
 
   def show(df: DataFrame, size: Int = 100): Unit = {

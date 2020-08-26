@@ -24,7 +24,7 @@ class AirportWbanWrangling(val path: String) {
       .schema(schema)
       .load(path)
       .withColumn("TimeZone", $"TimeZone" * 3600L)
-      .withColumnRenamed("WBAN", "JOIN_WBAN")
+      .withColumnRenamed("WBAN", "MAPPING_WBAN")
 
     Data = broadcast(Data) // broadcast this dataset which small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
     logger.info(Data.schema.treeString)

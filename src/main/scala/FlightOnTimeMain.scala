@@ -23,6 +23,7 @@ object FlightOnTimeMain {
       weatherWrangling.loadData()
       logger.info(s"weather data after wrangling: ${weatherWrangling.Data.count()}")
 
+
       val flightWeatherWrangling = new FlightWeatherWrangling(flightWrangling, weatherWrangling, config.weatherTimeFrame, config.weatherTimeStep)
       flightWeatherWrangling.loadData()
 

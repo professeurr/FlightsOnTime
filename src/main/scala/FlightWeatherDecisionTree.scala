@@ -26,8 +26,7 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling, 
     logger.info(data.schema.treeString)
 
     logger.info("split the dataset into training and test data")
-    var Array(trainingData, testData) = data.randomSplit(Array(0.75, 0.25))
-
+    var Array(trainingData, testData) = data.randomSplit(Array(0.75, 0.25), seed = 42)
     trainingData = trainingData.cache()
     testData = testData.cache()
 
@@ -36,7 +35,6 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling, 
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
     val trainedModel = model.fit(trainingData)
-
     trainedModel.write.overwrite().save(outputPath)
 
     logger.info("evaluating the model on the test data...")
@@ -47,8 +45,7 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling, 
       .setMetricName("accuracy")
     val accuracy = evaluator.evaluate(predictions)
 
-    predictions = predictions.select("FL_ONTIME", "prediction", "rawPrediction", "probability", "FL_ID", "WEATHER_COND")
-    logger.info(predictions)
+    predictions = predictions.select("FL_ONTIME", "rawPrediction", "prediction", "probability", "FL_ID", "WEATHER_COND")
 
     logger.info("computing metrics...")
     val ontimePositive = predictions.where("FL_ONTIME=1 and prediction=1").count().toDouble
@@ -62,6 +59,7 @@ class FlightWeatherDecisionTree(flightWeatherWrangling: FlightWeatherWrangling, 
     val delayedRecall = delayedPositive / (delayedPositive + delayedNegative)
 
     logger.info(s"Accuracy = $accuracy")
+    logger.info(predictions)
     logger.info(s"Ontime Precision = $ontimePrecision")
     logger.info(s"Delayed Precision = $delayedPrecision")
     logger.info(s"Ontime Recall = $ontimeRecall")
