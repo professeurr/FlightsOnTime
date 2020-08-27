@@ -59,7 +59,7 @@ object FlightOnTimeMain {
     var delayedFlights = data.where("FL_ONTIME = 0").cache()
     val delayedFlightsCount = delayedFlights.count().toDouble
     logger.info(s"ontimeFlightsCount=$ontimeFlightsCount, delayedFlightsCount=$delayedFlightsCount")
-    if (balance) {
+    if (balance && false) {
       logger.info("Balancing the dataset")
       if (ontimeFlightsCount > delayedFlightsCount)
         ontimeFlights = ontimeFlights.sample(withReplacement = false, delayedFlightsCount / ontimeFlightsCount)
