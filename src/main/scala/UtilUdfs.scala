@@ -41,4 +41,8 @@ object UtilUdfs extends Serializable {
     else
       items ++ Seq.fill(padLength - items.length)("Z")
   })
+
+  val timeToHourUdf: UserDefinedFunction = udf((time: String) => {
+   time.slice(0, 2)
+  })
 }

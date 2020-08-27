@@ -1,15 +1,16 @@
 import org.apache.log4j.Logger
-import org.apache.spark.ml.classification.DecisionTreeClassifier
+import org.apache.spark.ml.classification.RandomForestClassifier
 import org.apache.spark.sql.DataFrame
 
-class FlightWeatherDecisionTree(trainingData: DataFrame, testData: DataFrame, config: Configuration) {
+class FlightWeatherRandomForest(trainingData: DataFrame, testData: DataFrame, config: Configuration) {
 
   @transient lazy val logger: Logger = Logger.getLogger(getClass.getName)
 
   def evaluate(): DataFrame = {
 
-    logger.info("Training DecisionTreeClassifier model on the training data")
-    val model = new DecisionTreeClassifier()
+    logger.info("Training RandomForest model on the training data")
+    val model = new RandomForestClassifier()
+      .setNumTrees(50)
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
 

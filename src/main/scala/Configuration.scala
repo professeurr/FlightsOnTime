@@ -7,5 +7,7 @@ case class Configuration(cluster: String,
                          weatherTimeFrame: Int,
                          weatherTimeStep: Int,
                          weatherSkyconditionLayers: Int,
+                         weatherBucketizeWindDirection: Boolean,
+                         mlBalanceDataset: Boolean,
                          modelPath: String
                         )
