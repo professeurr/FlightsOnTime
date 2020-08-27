@@ -10,7 +10,7 @@ class FlightWeatherRandomForest(trainingData: DataFrame, testData: DataFrame, co
 
     logger.info("Training RandomForest model on the training data")
     val model = new RandomForestClassifier()
-      .setNumTrees(50)
+      .setNumTrees(10)
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
 
