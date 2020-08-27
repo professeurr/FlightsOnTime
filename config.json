@@ -5,11 +5,12 @@
   "wban_airports_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/wban_airport_timezone.csv",
 
   "flights_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/flights/sample/*",
-  "flights_delay_threshold": 90,
+  "flights_delay_threshold": 15,
 
   "weather_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/weather/sample/*",
   "weather_time_frame": 12,
   "weather_time_step": 1,
+  "weather_skycondition_layers": 1,
 
   "model_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/model/sample"
 }

@@ -6,5 +6,6 @@ case class Configuration(cluster: String,
                          weatherPath: String,
                          weatherTimeFrame: Int,
                          weatherTimeStep: Int,
+                         weatherSkyconditionLayers: Int,
                          modelPath: String
                         )

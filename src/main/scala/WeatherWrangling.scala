@@ -6,7 +6,7 @@ import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.DoubleType
 
-class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWrangling) {
+class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWrangling, config: Configuration) {
 
   @transient lazy val logger: Logger = Logger.getLogger(getClass.getName)
 
@@ -43,12 +43,15 @@ class WeatherWrangling(val path: String, val airportWbanWrangling: AirportWbanWr
     })
 
     logger.info(s"data partitions: ${Data.rdd.getNumPartitions}")
-    logger.info("splitting SkyCondition into 5 columns")
-    val scRange = 0 until 5
-    Data = Data.withColumn("skyCondition", UtilUdfs.skyConditionPadValueUdf(split(trim($"SkyCondition"), " "))) // pad Z
+    logger.info(s"splitting SkyCondition into ${config.weatherSkyconditionLayers} column(s)")
+    Data.show()
+    val scRange = 0 until config.weatherSkyconditionLayers // specify here the number of sky condition layers to use
+    Data = Data.withColumn("skyCondition", UtilUdfs.skyConditionPadValueUdf(split(trim($"SkyCondition"), " "), lit(scRange.length))) // pad Z
       .filter("skyCondition is not null")
     Data = Data.select(Data.columns.map(c => col(c)) ++ scRange.map(i => col("SkyCondition")(i).as(s"SkyConditionCategory_$i")): _*) // split into 5 columns
-      .drop("SkyCondition")
+      //.drop("SkyCondition")
+
+    Data.show(truncate = false)
 
     logger.info("applying forward-fill on weather conditions data")
     val w0 = Window.partitionBy($"WBAN").orderBy($"WEATHER_TIME".asc)

@@ -30,14 +30,15 @@ object UtilUdfs extends Serializable {
     Vectors.dense(data.toArray)
   })
 
-  val skyConditionCategoryUdf: UserDefinedFunction = udf((items: Seq[String]) => {
-    items.toSet.toArray
-  })
 
-  val skyConditionPadValueUdf: UserDefinedFunction = udf((items: Seq[String]) => {
+  val skyConditionPadValueUdf: UserDefinedFunction = udf((items: Seq[String], padLength: Int) => {
     if (items == null)
-      (0 until 6).map(_ => "Z")
+      (0 until padLength).map(_ => "Z")
+    else if( items.length > padLength)
+      items.slice(0, padLength)
+    else if(items.length == padLength)
+      items
     else
-      items ++ Seq.fill(5 - items.length)("Z")
+      items ++ Seq.fill(padLength - items.length)("Z")
   })
 }

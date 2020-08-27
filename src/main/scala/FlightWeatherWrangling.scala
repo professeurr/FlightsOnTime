@@ -2,7 +2,7 @@ import org.apache.log4j.Logger
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
-class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling: WeatherWrangling, weatherTimeFrame: Int, weatherTimeStep: Int) {
+class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling: WeatherWrangling, config: Configuration) {
 
   @transient lazy val logger: Logger = Logger.getLogger(getClass.getName)
 
@@ -11,7 +11,7 @@ class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling:
   var Data: DataFrame = _
 
   def loadData(): DataFrame = {
-    val tf: Int = 3600 * weatherTimeFrame
+    val tf: Int = 3600 * config.weatherTimeFrame
 
     logger.info("loading origin weather data")
     var OriginData = flightWrangling.Data.join(weatherWrangling.Data, $"ORIGIN_AIRPORT_ID" === $"AirportId", "inner")
@@ -24,7 +24,7 @@ class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling:
     logger.info("building origin weather data")
     OriginData = OriginData.groupBy($"FL_ID", $"FL_CRS_DEP_TIME", $"FL_ONTIME")
       .agg(UtilUdfs.fillMissingDataUdf($"FL_CRS_DEP_TIME",
-        collect_list($"WEATHER_TIME"), collect_list($"WEATHER_COND"), lit(weatherTimeFrame), lit(weatherTimeStep)).as("WEATHER_COND"))
+        collect_list($"WEATHER_TIME"), collect_list($"WEATHER_COND"), lit(config.weatherTimeFrame), lit(config.weatherTimeStep)).as("WEATHER_COND"))
       .filter("WEATHER_COND is not null")
       .drop("FL_CRS_DEP_TIME")
     /*logger.info(OriginData.schema.treeString)
@@ -43,7 +43,7 @@ class FlightWeatherWrangling(flightWrangling: FlightWrangling, weatherWrangling:
     logger.info(s"DestinationData.count() before filling weather ${DestinationData.count()}")
     DestinationData = DestinationData.groupBy($"FL_ID", $"FL_CRS_ARR_TIME", $"FL_ONTIME")
       .agg(UtilUdfs.fillMissingDataUdf($"FL_CRS_ARR_TIME",
-        collect_list($"WEATHER_TIME"), collect_list($"WEATHER_COND"), lit(weatherTimeFrame), lit(weatherTimeStep)).as("WEATHER_COND"))
+        collect_list($"WEATHER_TIME"), collect_list($"WEATHER_COND"), lit(config.weatherTimeFrame), lit(config.weatherTimeStep)).as("WEATHER_COND"))
       .filter("WEATHER_COND is not null")
       .drop("FL_CRS_ARR_TIME")
     /*logger.info(DestinationData.schema.treeString)
