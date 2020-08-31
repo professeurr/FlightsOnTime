@@ -14,7 +14,7 @@ class FlightWeatherDecisionTree(trainingData: DataFrame, testData: DataFrame, co
       .setFeaturesCol("WEATHER_COND")
 
     val trainedModel = model.fit(trainingData)
-    trainedModel.write.overwrite().save(config.modelPath)
+    //trainedModel.write.overwrite().save(config.modelPath)
 
     logger.info("evaluating the model on the test data...")
     trainedModel.transform(testData)

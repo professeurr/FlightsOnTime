@@ -22,3 +22,11 @@ logger.info("Mapping flights with the weather wban and timezone")
     logger.info(Data.schema.treeString)
     logger.info(s"flights data after joining: ${Data.count()}")
     Data.show(truncate = false)
+
+
+Data = Data.join(airportWbanWrangling.Data, $"MAPPING_WBAN" === $"WBAN", "outer")
+      .withColumn("WEATHER_TIME", unix_timestamp(concat_ws("", $"Date", $"Time"), "yyyyMMddHHmm").minus($"TimeZone"))
+    //.drop("Time", "MAPPING_WBAN", "Date")
+    logger.info(s"airports without weather data: ${Data.where("WBAN is null").select("AirportId").distinct().count()}")
+    logger.info(s"wbans without airports: ${Data.where("AirportID is null").select("WBAN").distinct().count()}")
+    logger.info(s"weather data after the mapping: ${Data.count()}")
