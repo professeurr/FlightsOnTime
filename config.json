@@ -1,18 +1,15 @@
 {
-  "cluster": "local[*]",
-  "number_of_cores": 7,
-
   "wban_airports_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/wban_airport_timezone.csv",
-  "flights_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/flights/sample/*.csv",
-  "weather_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/weather/sample/*",
+  "flights_path": [
+    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/flights/full/201301.csv"
+  ],
+  "weather_path": [
+    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/weather/full/201301hourly.txt"
+  ],
   "model_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/model/sample",
-
   "flights_delay_threshold": 15,
+  "flights_frac": 0.1,
   "weather_time_frame": 12,
   "weather_time_step": 1,
-  "weather_skycondition_layers": 2,
-  "weather_weather_type_layers": 2,
-  "weather_bucketize_wind_direction": true,
   "ml_balance_dataset": true
-
 }

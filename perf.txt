@@ -1,0 +1,58 @@
+20/11/02 20:41:35 INFO Main$: [MACHINE LEARNING]
+20/11/02 20:41:35 INFO Main$: Training the model DecisionTree on training data...
+20/11/02 20:41:35 INFO FlightWeatherDecisionTree: Training DecisionTreeClassifier model on the training data
+20/11/02 20:49:52 INFO Main$: Evaluating the model DecisionTree on training data...
+20/11/02 20:49:52 INFO FlightWeatherDecisionTree: evaluating the model on the test data...
+20/11/02 20:49:52 INFO Main$: Performance of the model DecisionTree on training data...
++------------+-------+---------+-----+
+|model       |label  |metric   |value|
++------------+-------+---------+-----+
+|DecisionTree|All    |Accuracy |82%  |
+|DecisionTree|Delayed|Recall   |72%  |
+|DecisionTree|Delayed|Precision|29%  |
+|DecisionTree|OnTime |Recall   |83%  |
+|DecisionTree|OnTime |Precision|97%  |
++------------+-------+---------+-----+
+
+20/11/02 20:49:54 INFO Main$: Evaluating the model DecisionTree on test data...
+20/11/02 20:49:54 INFO FlightWeatherDecisionTree: evaluating the model on the test data...
+20/11/02 20:49:54 INFO Main$: Performance of the model DecisionTree on test data...
++------------+-------+---------+-----+
+|model       |label  |metric   |value|
++------------+-------+---------+-----+
+|DecisionTree|All    |Accuracy |81%  |
+|DecisionTree|Delayed|Recall   |71%  |
+|DecisionTree|Delayed|Precision|28%  |
+|DecisionTree|OnTime |Recall   |82%  |
+|DecisionTree|OnTime |Precision|97%  |
++------------+-------+---------+-----+
+
+20/11/02 20:49:54 INFO Main$: Training the model RandomForest on training data...
+20/11/02 20:49:54 INFO FlightWeatherRandomForest: Training RandomForestClassifier model on the training data
+20/11/02 20:50:02 INFO Main$: Evaluating the model RandomForest on training data...
+20/11/02 20:50:02 INFO FlightWeatherRandomForest: evaluating the model on the test data...
+20/11/02 20:50:02 INFO Main$: Performance of the model RandomForest on training data...
++------------+-------+---------+-----+
+|model       |label  |metric   |value|
++------------+-------+---------+-----+
+|RandomForest|All    |Accuracy |81%  |
+|RandomForest|Delayed|Recall   |78%  |
+|RandomForest|Delayed|Precision|20%  |
+|RandomForest|OnTime |Recall   |81%  |
+|RandomForest|OnTime |Precision|98%  |
++------------+-------+---------+-----+
+
+20/11/02 20:50:03 INFO Main$: Evaluating the model RandomForest on test data...
+20/11/02 20:50:03 INFO FlightWeatherRandomForest: evaluating the model on the test data...
+20/11/02 20:50:03 INFO Main$: Performance of the model RandomForest on test data...
++------------+-------+---------+-----+
+|model       |label  |metric   |value|
++------------+-------+---------+-----+
+|RandomForest|All    |Accuracy |81%  |
+|RandomForest|Delayed|Recall   |77%  |
+|RandomForest|Delayed|Precision|19%  |
+|RandomForest|OnTime |Recall   |81%  |
+|RandomForest|OnTime |Precision|98%  |
++------------+-------+---------+-----+
+
+20/11/02 20:50:03 INFO Main$: [END: 2669 s]

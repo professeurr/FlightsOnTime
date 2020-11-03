@@ -1,14 +1,10 @@
-case class Configuration(cluster: String,
-                         numberOfCores: Int,
-                         wbanAirportsPath: String,
-                         flightsPath: String,
+case class Configuration(wbanAirportsPath: String,
+                         flightsPath: Array[String],
+                         weatherPath: Array[String],
+                         modelPath: String,
                          flightsDelayThreshold: Int,
-                         weatherPath: String,
+                         flightsFrac: Double,
                          weatherTimeFrame: Int,
                          weatherTimeStep: Int,
-                         weatherSkyconditionLayers: Int,
-                         weatherWeatherTypeLayers: Int,
-                         weatherBucketizeWindDirection: Boolean,
-                         mlBalanceDataset: Boolean,
-                         modelPath: String
+                         mlBalanceDataset: Boolean
                         )

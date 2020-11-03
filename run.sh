@@ -5,7 +5,7 @@ spark-submit \
   --num-executors 2 \
   --executor-memory 4G \
   --files ./config.json \
-  --class FlightOnTimeMain \
+  --class Main \
   target/scala-2.12/flightsontime_klouvi_riva_2.12-1.0.jar
 
  #e.g ./run.sh spark://127.0.0.1:7077 client
