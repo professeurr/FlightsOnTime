@@ -1,6 +1,6 @@
 spark-submit \
-  --master $1 \
-  --deploy-mode $2 \
+  --master spark://127.0.0.1:7077 \
+  --deploy-mode client \
   --executor-cores 3 \
   --num-executors 2 \
   --executor-memory 4G \

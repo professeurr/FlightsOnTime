@@ -12,5 +12,4 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion % "compile"
   ,"org.apache.spark" %% "spark-sql" % sparkVersion % "compile"
   ,"org.apache.spark" %% "spark-mllib" % sparkVersion % "compile"
-  ,"org.apache.spark" %% "spark-ml" % sparkVersion % "compile"
 )

@@ -12,7 +12,7 @@ import scala.io.Source
 
 object Utility {
 
-  @transient lazy val logger: Logger = Logger.getLogger(getClass.getName)
+  @transient lazy val logger: Logger = Logger.getLogger("$")
 
   Logger.getLogger("org").setLevel(Level.OFF)
   Logger.getLogger("akka").setLevel(Level.OFF)
@@ -24,7 +24,7 @@ object Utility {
     .getOrCreate()
 
   def initialize: Configuration = {
-    logger.info("Initializing...")
+    Utility.log("Initializing...")
     if (sparkSession == null) {
       logger.error("Spark session was not created.")
       throw new Exception("Spark session is not created.")
@@ -32,13 +32,13 @@ object Utility {
     // Import default formats
     implicit val formats: DefaultFormats.type = DefaultFormats
 
-    logger.info("loading configuration...")
+    Utility.log("loading configuration...")
     val configFile = "config.json"
     val path = Paths.get(configFile).normalize()
     if (!Files.exists(path))
       throw new Exception(s"configuration file '$configFile' does not exist. It should be placed in the working directory.")
 
-    logger.info(s"configuration file '${path.toString}' is provided, let's initialize the session.")
+    Utility.log(s"configuration file '${path.toString}' is provided, let's initialize the session.")
     val f = Source.fromFile(configFile)
     // Parse config file into Configuration object
     val json = parse(f.getLines().mkString)
@@ -48,30 +48,38 @@ object Utility {
   }
 
   def destroy(): Unit = {
-    if (sparkSession != null) {
+    if (sparkSession != null)
       sparkSession.close()
-    }
+  }
+
+  def log(s: Any) = {
+    logger.info(s)
+  }
+
+  def show(data: DataFrame, truncate: Boolean = false): Unit = {
+    if (!config.clusterMode)
+      data.show(truncate = truncate)
   }
 
   def balanceDataset(data: DataFrame, label: String): DataFrame = {
-    logger.info("Balancing the dataset")
-    var ontimeFlights = data.filter(s"$label = 1")
-    val ontimeFlightsCount = ontimeFlights.count().toDouble
-    var delayedFlights = data.filter(s"$label = 0").cache()
-    val delayedFlightsCount = delayedFlights.count().toDouble
+    Utility.log(s"Balancing the dataset- number of records:${data.count()}")
+    val df = data.groupBy(label).count()
+    val count0 = df.filter(s"$label = 0").collectAsList().get(0).getLong(1).toDouble
+    val count1 = df.filter(s"$label = 1").collectAsList().get(0).getLong(1).toDouble
+    Utility.log(s"number of on-time flights=$count1, number of delayed flights=$count0")
 
-    logger.info(s"ontimeFlightsCount=$ontimeFlightsCount, delayedFlightsCount=$delayedFlightsCount")
-    if (ontimeFlightsCount > delayedFlightsCount)
-      ontimeFlights = ontimeFlights.sample(withReplacement = false, delayedFlightsCount / ontimeFlightsCount)
-    else
-      delayedFlights = delayedFlights.sample(withReplacement = false, ontimeFlightsCount / delayedFlightsCount)
+    val Array(index0, index1, r) = if (count1 > count0) Array(0, 1, count0 / count1) else Array(1, 0, count1 / count1)
+    val balancedData = data.filter(s"$label = $index1").sample(withReplacement = false, r)
+      .union(data.filter(s"$label = $index0"))
 
-    ontimeFlights.union(delayedFlights).cache()
+    Utility.log("done")
+    Utility.log(s"data after balancing: ${count1 + count0}")
+    balancedData
   }
 
-  def percentUdf: UserDefinedFunction = udf((number: Double) => {
+  def percent(number: Double) = {
     s"${Math.round(100 * number)}%"
-  })
+  }
 
 }
 
@@ -82,7 +90,7 @@ object UdfUtility extends Serializable {
   // in strict mode, for a particular missing data point, only the record the precedent record is used to fill up the gap
   // otherwise we use the closest record
   def fillMissingData(originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int): Seq[Double] = {
-    var cds : Seq[Double] = null
+    var cds: Seq[Double] = null
     val delta = step * 3600
     cds = List[Double]()
     var curTime = originTime
@@ -92,7 +100,7 @@ object UdfUtility extends Serializable {
       cds ++= weatherConds(index).toDense.toArray
       curTime -= delta
     }
-    if(cds.isEmpty) null else cds
+    if (cds.isEmpty) null else cds
   }
 
   val fillWeatherDataUdf: UserDefinedFunction = udf((originTime: Long, depTimes: Seq[Long], depWeatherConds: Seq[Vector],
@@ -109,7 +117,9 @@ object UdfUtility extends Serializable {
   })
 
   val skys: Array[String] = Array("SKC", "FEW", "SCT", "BKN", "OVC")
-  def parSkyCondition(skyCond: String): Array[Int] = {
+  // SKC0200 SCT03011 BKN0400
+  // 1 3 4
+  def parseSkyCondition(skyCond: String): Array[Int] = {
     var result = Array[Int](0, 0, 0)
     var t = skyCond.trim.split(" ").map(x => {
       val f = if (x.length < 3) -1 else skys.indexOf(x.toUpperCase.substring(0, 3))
@@ -129,35 +139,36 @@ object UdfUtility extends Serializable {
   val parseWeatherVariablesUdf: UserDefinedFunction = udf((skyCond: String, dryBulb: String, weatherType: String,
                                                            stationPressure: String, windDirection: String,
                                                            visibility: String, relativeHumidity: String, windSpeed: String) => {
-    var result = parSkyCondition(skyCond)
+    var result = parseSkyCondition(skyCond)
 
-    result :+= evalClass(windDirection, 360.0 / 8.0)
+    // TODO: take into account the zero value (=10) and VR (=11)
+    result :+= evalClass(windDirection, 360.0 / 8.0, maxValue = 9)
 
     //between 0 - 10 -> 3 classes
-    result :+= Math.min(evalClass(visibility, 4), 4)
+    result :+= evalClass(visibility, 4, maxValue = 4)
 
     //between 0 - 100 -> 4 classes
-    result :+= evalClass(relativeHumidity, 25)
+    result :+= evalClass(relativeHumidity, 25, maxValue = 5)
 
     //between 0 - 100 KT (0 - 50 m/s) -> 4 classes https://www.lmwindpower.com/en/stories-and-press/stories/learn-about-wind/what-is-a-wind-class
-    result :+= evalClass(windSpeed, 25)
+    result :+= evalClass(windSpeed, 2, maxValue = 5)
 
-    result :+= evalClass(stationPressure, 10, -10)
+    result :+= evalClass(stationPressure, 10, -10, maxValue = 5)
 
     // between -50 - +50 -> 4 classes
-    result :+= evalClass(dryBulb, 25, 50)
+    result :+= evalClass(dryBulb, 25, 50, maxValue = 5)
 
     try {
-      result :+= weatherType.trim.split(" ").length + 1
+      result :+= Math.min(weatherType.trim.split(" ").length + 1, 4)
     }
     catch {
-      case _ : Exception => result :+= 0
+      case _: Exception => result :+= 0
     }
 
     result
   })
 
-  def evalClass(s: String, coeff: Double, bias: Double = 0): Int = {
+  def evalClass(s: String, coeff: Double, bias: Double = 0, maxValue:Int): Int = {
     var c: Int = 0
     try {
       c = ((s.trim.toDouble + bias) / coeff).toInt + 1
@@ -165,7 +176,7 @@ object UdfUtility extends Serializable {
     catch {
       case _: Throwable =>
     }
-    c
+    Math.min(c, maxValue)
   }
 
   val toArrayUdf: UserDefinedFunction = udf((vect: Vector) => {
