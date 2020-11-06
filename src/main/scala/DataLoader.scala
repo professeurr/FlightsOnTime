@@ -81,7 +81,7 @@ class DataLoader(config: Configuration) {
   }
 
   def loadWeatherData(path: Array[String], mappingData: DataFrame, testMode: Boolean): DataFrame = {
-    var weatherCondColumns = Array("SkyCondition", "DryBulbCelsius", "WeatherType", "StationPressure", "WindDirection", "Visibility", "RelativeHumidity", "WindSpeed")
+    val weatherCondColumns = Array("SkyCondition", "DryBulbCelsius", "WeatherType", "StationPressure", "WindDirection", "Visibility", "RelativeHumidity", "WindSpeed")
 
     Utility.log(s"Loading weather records from ${path.mkString(",")}")
     var data = path.map(Utility.sparkSession.read.format("csv")
@@ -100,7 +100,6 @@ class DataLoader(config: Configuration) {
     Utility.show(data)
 
     val featureLabel = "WF" // temporary weather features columns names.
-    val featuresLabel = "WeatherFeatures"
 
     Utility.log("transforming categorical variables...")
     data = data.withColumn(featureLabel + "0", parseSkyConditionUdf($"SkyCondition", lit(0)))
@@ -108,7 +107,7 @@ class DataLoader(config: Configuration) {
       .withColumn(featureLabel + "2", parseSkyConditionUdf($"SkyCondition", lit(2)))
       .withColumn(featureLabel + "3", array_min(array(lit($"Visibility".cast(IntegerType) / 4), lit(3))) + 1)
       .withColumn(featureLabel + "4", array_min(array(lit($"RelativeHumidity".cast(IntegerType) / 25), lit(4))) + 1)
-      .withColumn(featureLabel + "5", array_min(array(lit($"WindSpeed".cast(IntegerType) / 2), lit(4))) + 1)
+      .withColumn(featureLabel + "5", array_min(array(lit($"WindSpeed".cast(IntegerType) / 25), lit(4))) + 1)
       .withColumn(featureLabel + "6", array_min(array(lit(($"StationPressure".cast(IntegerType) - 10) / 10), lit(4))) + 1)
       .withColumn(featureLabel + "7", array_min(array(lit(($"DryBulbCelsius".cast(IntegerType) + 50) / 25), lit(4))) + 1)
       .withColumn(featureLabel + "8", size(split($"WeatherType", " ")))

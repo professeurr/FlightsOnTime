@@ -149,7 +149,7 @@ object UdfUtility extends Serializable {
     result :+= evalClass(relativeHumidity, 25, maxValue = 5)
 
     //between 0 - 100 KT (0 - 50 m/s) -> 4 classes https://www.lmwindpower.com/en/stories-and-press/stories/learn-about-wind/what-is-a-wind-class
-    result :+= evalClass(windSpeed, 2, maxValue = 5)
+    result :+= evalClass(windSpeed, 25, maxValue = 5)
 
     result :+= evalClass(stationPressure, 10, -10, maxValue = 5)
 
