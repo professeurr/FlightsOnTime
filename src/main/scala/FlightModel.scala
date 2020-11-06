@@ -26,15 +26,13 @@ trait FlightModel {
     val rdd = predictions.select("FL_ONTIME", "prediction").rdd.map(row => (row.getDouble(0), row.getDouble(1)))
     val metrics = new MulticlassMetrics(rdd)
     val metricsDF = Seq(
-      ("Accuracy         :", metrics.accuracy),
-      ("Delayed Recall   :", metrics.recall(0.0)),
-      ("Delayed Precision:", metrics.precision(0.0)),
-      ("OnTime Recall    :", metrics.recall(1.0)),
-      ("OnTime Precision :", metrics.precision(1.0)))
-      .map(r => "\t" + r._1 + " " + Utility.percent(r._2))
+      ("Accuracy         ", metrics.accuracy),
+      ("Delayed Recall   ", metrics.recall(0.0)),
+      ("Delayed Precision", metrics.precision(0.0)),
+      ("OnTime Recall    ", metrics.recall(1.0)),
+      ("OnTime Precision ", metrics.precision(1.0)))
+      .map(r => "\t" + r._1 + s": ${Math.round(100 * r._2)}%")
       .mkString("\n")
-    //.toDF("model", "label", "metric", "value")
-    //.withColumn("value", Utility.percentUdf($"value"))
 
     Utility.log(s"$getName metrics\n$metricsDF")
     //metricsDF
@@ -51,7 +49,10 @@ class FlightWeatherDecisionTree() extends FlightModel {
 
   override def fit(trainingData: DataFrame): FlightModel = {
     Utility.log("Training DecisionTreeClassifier model on the training data")
-    val dt = new DecisionTreeClassifier().setLabelCol("FL_ONTIME").setFeaturesCol("WEATHER_COND")
+    val dt = new DecisionTreeClassifier()
+      .setLabelCol("FL_ONTIME")
+      .setFeaturesCol("WEATHER_COND")
+      //.setWeightCol("WEIGHT")
     val pipeline = new Pipeline().setStages(Array(dt))
     model = pipeline.fit(trainingData)
     this
@@ -77,7 +78,9 @@ class FlightWeatherRandomForest() extends FlightModel {
 
   override def fit(trainingData: DataFrame): FlightModel = {
     Utility.log("Training RandomForestClassifier model on the training data")
-    val rf = new RandomForestClassifier().setNumTrees(10).setLabelCol("FL_ONTIME").setFeaturesCol("WEATHER_COND")
+    val rf = new RandomForestClassifier()
+      .setLabelCol("FL_ONTIME")
+      .setFeaturesCol("WEATHER_COND")
     val pipeline = new Pipeline().setStages(Array(rf))
     model = pipeline.fit(trainingData)
     this

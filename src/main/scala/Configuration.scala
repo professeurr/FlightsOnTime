@@ -11,5 +11,6 @@ case class Configuration(wbanAirportsPath: String,
                          mlBalanceDataset: Boolean,
                          trainModel: Boolean,
                          testModel: Boolean,
-                         clusterMode : Boolean
+                         clusterMode : Boolean,
+                         partitions: Int
                         )

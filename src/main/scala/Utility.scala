@@ -44,6 +44,8 @@ object Utility {
     val json = parse(f.getLines().mkString)
     config = json.camelizeKeys.extract[Configuration]
     f.close()
+    if(config.partitions > 0)
+    sparkSession.conf.set("spark.sql.shuffle.partitions", config.partitions)
     config
   }
 
@@ -61,26 +63,9 @@ object Utility {
       data.show(truncate = truncate)
   }
 
-  def balanceDataset(data: DataFrame, label: String): DataFrame = {
-    Utility.log(s"Balancing the dataset- number of records:${data.count()}")
-    val df = data.groupBy(label).count()
-    val count0 = df.filter(s"$label = 0").collectAsList().get(0).getLong(1).toDouble
-    val count1 = df.filter(s"$label = 1").collectAsList().get(0).getLong(1).toDouble
-    Utility.log(s"number of on-time flights=$count1, number of delayed flights=$count0")
-
-    val Array(index0, index1, r) = if (count1 > count0) Array(0, 1, count0 / count1) else Array(1, 0, count1 / count1)
-    val balancedData = data.filter(s"$label = $index1").sample(withReplacement = false, r)
-      .union(data.filter(s"$label = $index0"))
-
-    Utility.log("done")
-    Utility.log(s"data after balancing: ${count1 + count0}")
-    balancedData
+  def count(data: DataFrame): String = {
+    if (!config.clusterMode) data.count().toString else "---"
   }
-
-  def percent(number: Double) = {
-    s"${Math.round(100 * number)}%"
-  }
-
 }
 
 
@@ -117,12 +102,13 @@ object UdfUtility extends Serializable {
   })
 
   val skys: Array[String] = Array("SKC", "FEW", "SCT", "BKN", "OVC")
+
   // SKC0200 SCT03011 BKN0400
   // 1 3 4
-  def parseSkyCondition(skyCond: String): Array[Int] = {
-    var result = Array[Int](0, 0, 0)
+  def parseSkyCondition(skyCond: String): Array[Double] = {
+    var result = Array[Double](0.0, 0.0, 0.0)
     var t = skyCond.trim.split(" ").map(x => {
-      val f = if (x.length < 3) -1 else skys.indexOf(x.toUpperCase.substring(0, 3))
+      val f = if (x.length < 3) -1.0 else skys.indexOf(x.toUpperCase.substring(0, 3))
       if (f == -1) 0 else f + 1
     })
     if (!t.isEmpty) {
@@ -136,13 +122,25 @@ object UdfUtility extends Serializable {
     result
   }
 
+
+  val parseSkyConditionUdf: UserDefinedFunction = udf((skyCond: String, index: Int) => {
+    val skyConds = skyCond.trim.split(" ")
+    if (skyConds.isEmpty) 0.0 else {
+      val x = skyConds(Math.min(index, skyConds.length - 1))
+      if (x.length >= 3) {
+        skyConds.indexOf(x.substring(0, 3)) + 1.0
+      }
+      else 0.0
+    }
+  })
+
   val parseWeatherVariablesUdf: UserDefinedFunction = udf((skyCond: String, dryBulb: String, weatherType: String,
                                                            stationPressure: String, windDirection: String,
                                                            visibility: String, relativeHumidity: String, windSpeed: String) => {
     var result = parseSkyCondition(skyCond)
 
     // TODO: take into account the zero value (=10) and VR (=11)
-    result :+= evalClass(windDirection, 360.0 / 8.0, maxValue = 9)
+    result :+= evalClass(windDirection, 45, maxValue = 9)
 
     //between 0 - 10 -> 3 classes
     result :+= evalClass(visibility, 4, maxValue = 4)
@@ -159,19 +157,19 @@ object UdfUtility extends Serializable {
     result :+= evalClass(dryBulb, 25, 50, maxValue = 5)
 
     try {
-      result :+= Math.min(weatherType.trim.split(" ").length + 1, 4)
+      result :+= Math.min(weatherType.trim.split(" ").length + 1, 4.0)
     }
     catch {
-      case _: Exception => result :+= 0
+      case _: Exception => result :+= 0.0
     }
 
     result
   })
 
-  def evalClass(s: String, coeff: Double, bias: Double = 0, maxValue:Int): Int = {
-    var c: Int = 0
+  def evalClass(s: String, coeff: Double, bias: Double = 0, maxValue: Int): Double = {
+    var c: Double = 0
     try {
-      c = ((s.trim.toDouble + bias) / coeff).toInt + 1
+      c = ((s.trim.toDouble + bias) / coeff).toInt + 1.0
     }
     catch {
       case _: Throwable =>
@@ -179,7 +177,22 @@ object UdfUtility extends Serializable {
     Math.min(c, maxValue)
   }
 
-  val toArrayUdf: UserDefinedFunction = udf((vect: Vector) => {
+  val evalClassUdf: UserDefinedFunction = udf((s: String, coeff: Double, bias: Double, maxValue: Int) => {
+    evalClass(s, coeff, bias, maxValue)
+  })
+
+  val parseWeatherType: UserDefinedFunction = udf((weatherType: String) => {
+    try {
+      Math.min(weatherType.trim.split(" ").length + 1, 4.0)
+    }
+    catch {
+      case _: Exception => 0.0
+    }
+
+  })
+
+
+  val toDenseUdf: UserDefinedFunction = udf((vect: Vector) => {
     vect.toDense.toArray
   })
 }

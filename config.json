@@ -16,11 +16,12 @@
   ],
   "model_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/model/full/",
   "train_model": true,
-  "test_model": true,
+  "test_model": false,
   "flights_delay_threshold": 15,
-  "flights_frac": 0.05,
+  "flights_frac":0.5,
   "weather_time_frame": 12,
   "weather_time_step": 1,
   "ml_balance_dataset": true,
-  "cluster_mode": false
+  "cluster_mode": false,
+  "partitions": 7
 }

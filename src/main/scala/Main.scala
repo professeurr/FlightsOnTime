@@ -17,8 +17,14 @@ object Main {
       if (config.trainModel) {
         Utility.log("[TRAINING DATA PREPARATION]")
         val weatherData = dataLoader.loadWeatherData(config.weatherPath, airportWbanData, false).cache()
+        var t1 = System.nanoTime()
+        Utility.log(s"[weatherDataLoad elapsed: ${(t1 - t0) / 1000000000} s]")
         val flightData = dataLoader.loadFlightData(config.flightsPath, airportWbanData).cache()
+        Utility.log(s"[flightDataLoad elapsed: ${(System.nanoTime() - t1) / 1000000000} s]")
+        t1 = System.nanoTime()
         val data = dataLoader.combineData(flightData, weatherData).cache()
+        Utility.log(s"[data combining elapsed: ${(System.nanoTime() - t1) / 1000000000} s]")
+        Utility.log(s"[data preparation elapsed: ${(System.nanoTime() - t0) / 1000000000} s]")
 
         var Array(trainingData, testData) = data.randomSplit(Array(0.70, 0.30))
         trainingData = trainingData.cache()
