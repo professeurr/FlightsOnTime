@@ -21,6 +21,7 @@ object Utility {
 
   lazy val sparkSession: SparkSession = SparkSession.builder()
     .appName(s"FlightOnTime${scala.util.Random.nextInt()}")
+    .config("spark.sql.broadcastTimeout", -1)
     .getOrCreate()
 
   def initialize: Configuration = {
@@ -44,8 +45,10 @@ object Utility {
     val json = parse(f.getLines().mkString)
     config = json.camelizeKeys.extract[Configuration]
     f.close()
-    if(config.partitions > 0)
-    sparkSession.conf.set("spark.sql.shuffle.partitions", config.partitions)
+    if (config.partitions > 0) {
+      sparkSession.conf.set("spark.sql.shuffle.partitions", config.partitions)
+
+    }
     config
   }
 
@@ -105,92 +108,51 @@ object UdfUtility extends Serializable {
 
   // SKC0200 SCT03011 BKN0400
   // 1 3 4
-  def parseSkyCondition(skyCond: String): Array[Double] = {
-    var result = Array[Double](0.0, 0.0, 0.0)
-    var t = skyCond.trim.split(" ").map(x => {
-      val f = if (x.length < 3) -1.0 else skys.indexOf(x.toUpperCase.substring(0, 3))
-      if (f == -1) 0 else f + 1
-    })
-    if (!t.isEmpty) {
-      if (t.length == 1) {
-        t :+= t(0)
-        t :+= t(0)
-      } else if (t.length == 2)
-        t :+= t(1)
-      result = t
-    }
-    result
-  }
-
-
   val parseSkyConditionUdf: UserDefinedFunction = udf((skyCond: String, index: Int) => {
     val skyConds = skyCond.trim.split(" ")
-    if (skyConds.isEmpty) 0.0 else {
+    if (skyConds.isEmpty) 0.0
+    else {
       val x = skyConds(Math.min(index, skyConds.length - 1))
       if (x.length >= 3) {
-        skyConds.indexOf(x.substring(0, 3)) + 1.0
+        skys.indexOf(x.substring(0, 3)) + 1.0
       }
       else 0.0
     }
   })
 
-  val parseWeatherVariablesUdf: UserDefinedFunction = udf((skyCond: String, dryBulb: String, weatherType: String,
-                                                           stationPressure: String, windDirection: String,
-                                                           visibility: String, relativeHumidity: String, windSpeed: String) => {
-    var result = parseSkyCondition(skyCond)
-
-    // TODO: take into account the zero value (=10) and VR (=11)
-    result :+= evalClass(windDirection, 45, maxValue = 9)
-
-    //between 0 - 10 -> 3 classes
-    result :+= evalClass(visibility, 4, maxValue = 4)
-
-    //between 0 - 100 -> 4 classes
-    result :+= evalClass(relativeHumidity, 25, maxValue = 5)
-
-    //between 0 - 100 KT (0 - 50 m/s) -> 4 classes https://www.lmwindpower.com/en/stories-and-press/stories/learn-about-wind/what-is-a-wind-class
-    result :+= evalClass(windSpeed, 25, maxValue = 5)
-
-    result :+= evalClass(stationPressure, 10, -10, maxValue = 5)
-
-    // between -50 - +50 -> 4 classes
-    result :+= evalClass(dryBulb, 25, 50, maxValue = 5)
-
-    try {
-      result :+= Math.min(weatherType.trim.split(" ").length + 1, 4.0)
-    }
-    catch {
-      case _: Exception => result :+= 0.0
-    }
-
-    result
+  val parseWeatherTypeUdf: UserDefinedFunction = udf((weatherType: String) => {
+    weatherType.trim.replace("+", "").replace("-", "").replace(" ", "").length / 2
   })
 
-  def evalClass(s: String, coeff: Double, bias: Double = 0, maxValue: Int): Double = {
-    var c: Double = 0
-    try {
-      c = ((s.trim.toDouble + bias) / coeff).toInt + 1.0
+  val parseWindDirectionUdf: UserDefinedFunction = udf((windDirection: String) => {
+    if (windDirection.equalsIgnoreCase("0"))
+      8
+    else if (windDirection.equalsIgnoreCase("M"))
+      9
+    else {
+      try {
+        (windDirection.toDouble / 45).toInt
+      } catch {
+        case _: Exception => 0
+      }
     }
-    catch {
-      case _: Throwable =>
-    }
-    Math.min(c, maxValue)
-  }
-
-  val evalClassUdf: UserDefinedFunction = udf((s: String, coeff: Double, bias: Double, maxValue: Int) => {
-    evalClass(s, coeff, bias, maxValue)
   })
 
-  val parseWeatherType: UserDefinedFunction = udf((weatherType: String) => {
+  val parseNumericalVariableUdf: UserDefinedFunction = udf((str: String) => {
     try {
-      Math.min(weatherType.trim.split(" ").length + 1, 4.0)
+      str.toDouble
+    } catch {
+      case _: Exception => -1
     }
-    catch {
-      case _: Exception => 0.0
-    }
-
   })
 
+  val parseTemperatureUdf: UserDefinedFunction = udf((str: String) => {
+    if (str == "M") 20.0 else str.toDouble
+  })
+
+  val parseVisibilityUdf: UserDefinedFunction = udf((str: String) => {
+    if (str == "M") -1 else if (str.toDouble >= 10) 10 else str.toDouble
+  })
 
   val toDenseUdf: UserDefinedFunction = udf((vect: Vector) => {
     vect.toDense.toArray

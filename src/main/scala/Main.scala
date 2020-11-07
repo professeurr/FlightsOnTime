@@ -14,6 +14,7 @@ object Main {
       // broadcast this dataset which is small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
       val airportWbanData = broadcast(dataLoader.loadStationsData())
 
+      val models = List[FlightModel](new FlightWeatherDecisionTree(), new FlightWeatherRandomForest()/*, new FlightWeatherLogisticRegression()*/)
       if (config.trainModel) {
         Utility.log("[TRAINING DATA PREPARATION]")
         val weatherData = dataLoader.loadWeatherData(config.weatherPath, airportWbanData, false).cache()
@@ -31,7 +32,6 @@ object Main {
         testData = testData.cache()
 
         Utility.log("[TRAINING MACHINE LEARNING]")
-        val models = List[FlightModel](new FlightWeatherDecisionTree(), new FlightWeatherRandomForest())
         models.foreach(model => {
           Utility.log(s"Training the model ${model.getName} on training data...")
           model.fit(trainingData)
@@ -45,7 +45,11 @@ object Main {
           Utility.log(s"Performance of the model ${model.getName} on test data...")
           model.summarize(prediction)
         })
-        Utility.sparkSession.sqlContext.clearCache()
+        try {
+          Utility.sparkSession.sqlContext.clearCache()
+        }catch{
+          case _ :Exception => ()
+        }
       }
 
       if (config.testModel) {
@@ -57,8 +61,7 @@ object Main {
         val testingData = dataLoader.combineData(testingFlightData, testingWeatherData).cache()
 
         Utility.log("[TESTING MACHINE LEARNING]")
-        val testingModels = List[FlightModel](new FlightWeatherDecisionTree(), new FlightWeatherRandomForest())
-        testingModels.foreach(model => {
+        models.foreach(model => {
           Utility.log(s"Evaluating the model ${model.getName} on testing data...")
           val prediction = model.evaluate(config.modelPath, testingData)
           Utility.log(s"Performance of the model ${model.getName} on testing data...")
