@@ -129,6 +129,8 @@ object UdfUtility extends Serializable {
       8
     else if (windDirection.equalsIgnoreCase("M"))
       9
+    else if (windDirection.equalsIgnoreCase("VR"))
+      10
     else {
       try {
         (windDirection.toDouble / 45).toInt
