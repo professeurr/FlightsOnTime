@@ -49,33 +49,32 @@ class DataLoader(config: Configuration) {
 
     Utility.log("some delays flights...")
     data.select("ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "ARR_DELAY_NEW")
-      .filter("ARR_DELAY_NEW > 0")
+      .filter("ARR_DELAY_NEW > 40")
       .groupBy("ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID").count()
       .orderBy(desc("count")).show(truncate = false)
 
-    Utility.log("longest delays...")
-    data.select("FL_DATE", "FL_ID", "ARR_DELAY_NEW")
-      .filter("ARR_DELAY_NEW > 0")
-      .groupBy("ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID").count()
-      .orderBy(desc("count"))
+    Utility.log("lines which have the longest delays...")
+    data.select("FL_DATE", "FL_ID", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "ARR_DELAY_NEW")
+      .filter("ARR_DELAY_NEW > 40")
       .withColumn("Delay (Hour)", ($"ARR_DELAY_NEW"/60).cast(IntegerType))
+      .orderBy(desc("ARR_DELAY_NEW"))
       .show(truncate = false)
 
     data = data.drop("OP_CARRIER_AIRLINE_ID", "OP_CARRIER_FL_NUM")
 
     Utility.log("some diverted or cancelled flights")
     data.select("FL_ID", "CANCELLED", "DIVERTED")
-      .filter("CANCELLED = 1 or DIVERTED = 0").show()
+      .filter("CANCELLED = 1 or DIVERTED = 0").show(truncate = false)
 
     Utility.log("number of cancelled or diverted flights...")
     data.select("FL_ID", "CANCELLED", "DIVERTED")
       .filter("CANCELLED = 1 or DIVERTED = 0")
-      .groupBy("CANCELLED", "DIVERTED").count().show()
+      .groupBy("CANCELLED", "DIVERTED").count().show(truncate = false)
 
     Utility.log("number of regular flights...")
     data.select("FL_ID", "CANCELLED", "DIVERTED")
       .filter("CANCELLED = 0 and DIVERTED = 0")
-      .groupBy("CANCELLED", "DIVERTED").count().show()
+      .groupBy("CANCELLED", "DIVERTED").count().show(truncate = false)
 
     // remove cancelled and diverted data
     Utility.log("Removing cancelled and diverted flights (they are out of this analysis)...")
