@@ -44,10 +44,10 @@ class DataLoader(config: Configuration) {
     Utility.log("computing flights identifier (FL_ID)...")
     data = data.withColumn("FL_ID",
       concat_ws("_", computeLineUdf($"ORIGIN_AIRPORT_ID", $"DEST_AIRPORT_ID"), $"FL_DATE", $"OP_CARRIER_AIRLINE_ID", $"OP_CARRIER_FL_NUM"))
-      .drop("OP_CARRIER_AIRLINE_ID", "OP_CARRIER_FL_NUM")
     //Utility.log(Data.schema.treeString)
     Utility.show(data.select("FL_ID", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_DATE", "OP_CARRIER_AIRLINE_ID", "OP_CARRIER_FL_NUM"))
 
+    data = data.drop("OP_CARRIER_AIRLINE_ID", "OP_CARRIER_FL_NUM")
     // remove cancelled and diverted data
     Utility.log("Removing cancelled and diverted flights (they are out of this analysis)...")
     data = data.filter("CANCELLED + DIVERTED = 0").drop("CANCELLED", "DIVERTED")
@@ -170,18 +170,18 @@ class DataLoader(config: Configuration) {
     Utility.log("joining flights data with weather data")
 
     Utility.log("repartitioning dep...")
-    val balancedWeatherData = weatherData.repartition($"AIRPORTID")
+    val partionedWeatherData = weatherData.repartition($"AIRPORTID")
     Utility.log("joining dep...")
 
     val depData = flightData.select("FL_ID", "FL_DEP_TIME", "ORIGIN_AIRPORT_ID", "FL_ONTIME")
-      .join(balancedWeatherData.as("dep"), $"ORIGIN_AIRPORT_ID" === $"dep.AIRPORTID", "inner")
+      .join(partionedWeatherData.as("dep"), $"ORIGIN_AIRPORT_ID" === $"dep.AIRPORTID", "inner")
       .where(s"dep.WEATHER_TIME >= FL_DEP_TIME - $tf and dep.WEATHER_TIME <= FL_DEP_TIME ")
       .drop("dep.AIRPORTID", "ORIGIN_AIRPORT_ID")
     Utility.log("partitions dep:" + depData.rdd.getNumPartitions)
 
     Utility.log("repartitioning arr...")
     val arrData = flightData.select("FL_ID", "FL_ARR_TIME", "DEST_AIRPORT_ID", "FL_ONTIME")
-      .join(balancedWeatherData.as("arr"), $"DEST_AIRPORT_ID" === $"arr.AIRPORTID", "inner")
+      .join(partionedWeatherData.as("arr"), $"DEST_AIRPORT_ID" === $"arr.AIRPORTID", "inner")
       .where(s"arr.WEATHER_TIME >= FL_ARR_TIME - $tf and arr.WEATHER_TIME <= FL_ARR_TIME ")
       .drop("arr.AIRPORTID", "ORIGIN_AIRPORT_ID", "FL_ONTIME")
     Utility.log("partitions arr:" + arrData.rdd.getNumPartitions)
@@ -228,6 +228,8 @@ class DataLoader(config: Configuration) {
 
     Utility.log(s"repartitioning the dataset...")
     var balancedData = data.select("Fl_ID", "FL_ONTIME").repartition($"FL_ONTIME")
+
+    balancedData.groupBy("FL_ONTIME").count().show()
     Utility.log(s"counting delayed and on-time flights...")
     // number of delayed flights
     val nbDelayed = balancedData.filter(s"FL_ONTIME = 0").count()
@@ -236,6 +238,7 @@ class DataLoader(config: Configuration) {
     //balancing map (we take the number of delayed flights as on-time ones)
     val fractions = Map(0.0 -> 1.0, 1.0 -> nbDelayed.toDouble / nbOnTime)
     balancedData = balancedData.stat.sampleBy("FL_ONTIME", fractions, 42L)
+    balancedData.groupBy("FL_ONTIME").count().show()
     Utility.log("joining...")
     balancedData = data.join(balancedData.as("b"), Array("FL_ID", "FL_ONTIME"), "inner")
       .drop("b.FL_ID", "b.FL_ONTIME")
