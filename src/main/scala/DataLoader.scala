@@ -15,7 +15,7 @@ class DataLoader(config: Configuration) {
       StructField("WBAN", StringType, nullable = true),
       StructField("TimeZone", LongType, nullable = true)))
     Utility.log(s"Loading weather stations ${config.wbanAirportsPath}")
-    var data = Utility.sparkSession.read.format("csv")
+    val data = Utility.sparkSession.read.format("csv")
       .option("header", "true").option("inferSchema", "false").schema(schema)
       .load(config.wbanAirportsPath)
       .withColumn("TimeZone", $"TimeZone" * 3600L)
@@ -41,13 +41,12 @@ class DataLoader(config: Configuration) {
     //Utility.log(s"number of flights: ${Utility.count(data)}; Flights columns: $cols")
     Utility.show(data)
 
-
     Utility.log("computing flights identifier (FL_ID)...")
     data = data.withColumn("FL_ID",
       concat_ws("_", computeLineUdf($"ORIGIN_AIRPORT_ID", $"DEST_AIRPORT_ID"), $"FL_DATE", $"OP_CARRIER_AIRLINE_ID", $"OP_CARRIER_FL_NUM"))
       .drop("OP_CARRIER_AIRLINE_ID", "OP_CARRIER_FL_NUM")
     //Utility.log(Data.schema.treeString)
-    Utility.show(data)
+    Utility.show(data.select("FL_ID", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_DATE", "OP_CARRIER_AIRLINE_ID", "OP_CARRIER_FL_NUM"))
 
     // remove cancelled and diverted data
     Utility.log("Removing cancelled and diverted flights (they are out of this analysis)...")
@@ -63,12 +62,12 @@ class DataLoader(config: Configuration) {
     Utility.log("computing FL_ONTIME flag (1=on-time; 0=delayed)")
     data = data.withColumn("FL_ONTIME", ($"ARR_DELAY_NEW" <= config.flightsDelayThreshold).cast(DoubleType))
       .drop("WEATHER_DELAY", "NAS_DELAY")
-    //Utility.show(data.select("FL_ID", "FL_DATE", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_ONTIME"))
+    Utility.show(data.select("FL_ID", "FL_DATE", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_ONTIME"))
 
     Utility.log("mapping flights with the weather stations...")
     data = data.join(mappingData, $"ORIGIN_AIRPORT_ID" === $"AirportId", "inner")
       .drop("AirportId")
-    //Utility.show(data.select("FL_ID", "FL_ONTIME", "FL_DATE", "CRS_DEP_TIME", "TimeZone"))
+    Utility.show(data.select("FL_ID", "FL_ONTIME", "FL_DATE", "CRS_DEP_TIME", "TimeZone"))
     //Utility.log(s"flights data after the mapping: ${Utility.count(data)}")
 
     Utility.log("computing FL_DATE, FL_DEP_TIME and FL_ARR_TIME")
@@ -76,10 +75,8 @@ class DataLoader(config: Configuration) {
       .withColumn("FL_ARR_TIME", ($"FL_DEP_TIME" + $"CRS_ELAPSED_TIME" * 60).cast(LongType))
       .select("FL_ID", "FL_DEP_TIME", "FL_ARR_TIME", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_ONTIME")
 
-    //Utility.show(data.filter("FL_ONTIME = 0").limit(12).union(data.filter("FL_ONTIME = 1").limit(10)).sample(false, 0.99))
+    Utility.show(data.filter("FL_ONTIME = 0").limit(12).union(data.filter("FL_ONTIME = 1").limit(10)).sample(withReplacement = false, 0.99))
 
-    //    if (config.mlBalanceDataset)
-    //      data = balanceDataset(data)
     if (config.flightsFrac > 0 && config.flightsFrac != 1)
       data = data.sample(withReplacement = false, config.flightsFrac)
 
@@ -90,9 +87,9 @@ class DataLoader(config: Configuration) {
   }
 
   def loadWeatherData(path: Array[String], mappingData: DataFrame, testMode: Boolean): DataFrame = {
-    val weatherCondColumns = Array("SkyCondition", "DryBulbCelsius", "WeatherType", "StationPressure", "WindDirection", "Visibility", "RelativeHumidity", "WindSpeed")
 
     Utility.log(s"Loading weather records from ${path.mkString(",")}")
+    val weatherCondColumns = Array("SkyCondition", "DryBulbCelsius", "WeatherType", "StationPressure", "WindDirection", "Visibility", "RelativeHumidity", "WindSpeed")
     var data = path.map(Utility.sparkSession.read.format("csv")
       .option("header", "true").option("inferSchema", "false").load(_)).reduce(_ union _)
       .select(Array(col("WBAN"), col("Date"), col("Time")) ++ weatherCondColumns.map(c => col(c)): _*)
@@ -139,6 +136,7 @@ class DataLoader(config: Configuration) {
     val categoricalVariables = Array("SkyConditionLow", "SkyConditionMedium", "SkyConditionHigh", "WeatherType", "WindDirection")
     if (!testMode) {
       // apply one-hot encoding of columns of the features
+      val categoricalVariables = Array("SkyConditionLow", "SkyConditionMedium", "SkyConditionHigh", "WeatherType", "WindDirection")
       val oneHotEncoder = new OneHotEncoder()
         .setInputCols(categoricalVariables.map(c => c + "Category"))
         .setOutputCols(categoricalVariables.map(c => c + "Vect"))
@@ -160,7 +158,9 @@ class DataLoader(config: Configuration) {
     Utility.log("transforming features (one-hot encoding + vector assembler)...")
     data = pipelineModel.transform(data)
 
-    data.select("AIRPORTID", "WEATHER_COND", "WEATHER_TIME")
+    data = data.select("AIRPORTID", "WEATHER_COND", "WEATHER_TIME")
+    Utility.show(data)
+    data
   }
 
   def combineData(flightData: DataFrame, weatherData: DataFrame): DataFrame = {
