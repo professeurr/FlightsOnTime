@@ -47,12 +47,40 @@ class DataLoader(config: Configuration) {
     //Utility.log(Data.schema.treeString)
     Utility.show(data.select("FL_ID", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_DATE", "OP_CARRIER_AIRLINE_ID", "OP_CARRIER_FL_NUM"))
 
+    Utility.log("some delays flights...")
+    data.select("ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "ARR_DELAY_NEW")
+      .filter("ARR_DELAY_NEW > 0")
+      .groupBy("ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID").count()
+      .orderBy(desc("count")).show(truncate = false)
+
+    Utility.log("longest delays...")
+    data.select("FL_DATE", "FL_ID", "ARR_DELAY_NEW")
+      .filter("ARR_DELAY_NEW > 0")
+      .groupBy("ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID").count()
+      .orderBy(desc("count"))
+      .withColumn("Delay (Hour)", ($"ARR_DELAY_NEW"/60).cast(IntegerType))
+      .show(truncate = false)
+
     data = data.drop("OP_CARRIER_AIRLINE_ID", "OP_CARRIER_FL_NUM")
+
+    Utility.log("some diverted or cancelled flights")
+    data.select("FL_ID", "CANCELLED", "DIVERTED")
+      .filter("CANCELLED = 1 or DIVERTED = 0").show()
+
+    Utility.log("number of cancelled or diverted flights...")
+    data.select("FL_ID", "CANCELLED", "DIVERTED")
+      .filter("CANCELLED = 1 or DIVERTED = 0")
+      .groupBy("CANCELLED", "DIVERTED").count().show()
+
+    Utility.log("number of regular flights...")
+    data.select("FL_ID", "CANCELLED", "DIVERTED")
+      .filter("CANCELLED = 0 and DIVERTED = 0")
+      .groupBy("CANCELLED", "DIVERTED").count().show()
+
     // remove cancelled and diverted data
     Utility.log("Removing cancelled and diverted flights (they are out of this analysis)...")
     data = data.filter("CANCELLED + DIVERTED = 0").drop("CANCELLED", "DIVERTED")
     //Utility.log(s"flights dataset without cancelled and diverted flights: ${Utility.count(data)}")
-
     Utility.log("Removing non-weather related delayed records...")
 
     data = data.filter(s"ARR_DELAY_NEW <= ${config.flightsDelayThreshold} " +
