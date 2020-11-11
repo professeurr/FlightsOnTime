@@ -14,14 +14,17 @@ object Main {
       // broadcast this dataset which is small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
       val airportWbanData = broadcast(dataLoader.loadStationsData())
 
-      val models = List[FlightModel](new FlightWeatherDecisionTree(), new FlightWeatherRandomForest()/*, new FlightWeatherLogisticRegression()*/)
+      val models = List[FlightModel](new FlightWeatherDecisionTree(), new FlightWeatherRandomForest() /*, new FlightWeatherLogisticRegression()*/)
       if (config.trainModel) {
         Utility.log("[TRAINING DATA PREPARATION]")
+
         val weatherData = dataLoader.loadWeatherData(config.weatherPath, airportWbanData, false).cache()
         var t1 = System.nanoTime()
         Utility.log(s"[weatherDataLoad elapsed: ${(t1 - t0) / 1000000000} s]")
+
         val flightData = dataLoader.loadFlightData(config.flightsPath, airportWbanData).cache()
-        Utility.log(s"[flightDataLoad elapsed: ${(System.nanoTime() - t1) / 1000000000} s]")
+        Utility.log(s"[flightDataLoad elapsed: ${(System.nanoTime() - t0) / 1000000000} s]")
+
         t1 = System.nanoTime()
         val data = dataLoader.combineData(flightData, weatherData).cache()
         Utility.log(s"[data combining elapsed: ${(System.nanoTime() - t1) / 1000000000} s]")
@@ -47,8 +50,8 @@ object Main {
         })
         try {
           Utility.sparkSession.sqlContext.clearCache()
-        }catch{
-          case _ :Exception => ()
+        } catch {
+          case _: Exception => ()
         }
       }
 

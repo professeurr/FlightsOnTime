@@ -15,7 +15,7 @@ class DataLoader(config: Configuration) {
       StructField("WBAN", StringType, nullable = true),
       StructField("TimeZone", LongType, nullable = true)))
     Utility.log(s"Loading weather stations ${config.wbanAirportsPath}")
-    val data = Utility.sparkSession.read.format("csv")
+    var data = Utility.sparkSession.read.format("csv")
       .option("header", "true").option("inferSchema", "false").schema(schema)
       .load(config.wbanAirportsPath)
       .withColumn("TimeZone", $"TimeZone" * 3600L)
@@ -31,56 +31,62 @@ class DataLoader(config: Configuration) {
     var data = path.map(Utility.sparkSession.read.format("csv")
       .option("header", "true").option("inferSchema", "false")
       .load(_)).reduce(_ union _)
-      .na.fill(0.0, delayColumns)
-    delayColumns.foreach(c => data = data.withColumn(c, col(c).cast(DoubleType)))
-    Utility.show(data)
 
     // remove empty columns
     val cols = data.columns.toSet.toList.filter(c => !c.trim.startsWith("_c"))
     data = data.select(cols.map(c => col(c)): _*)
-    Utility.log(s"number of flights: ${Utility.count(data)}; Flights columns: $cols")
+    // convert delay related columns to numerical type
+    delayColumns.foreach(c => data = data.withColumn(c, col(c).cast(DoubleType)))
+    data = data.na.fill(0.0, delayColumns)
+    //Utility.log(s"number of flights: ${Utility.count(data)}; Flights columns: $cols")
+    Utility.show(data)
+
 
     Utility.log("computing flights identifier (FL_ID)...")
     data = data.withColumn("FL_ID",
-      concat_ws("_", $"OP_CARRIER_AIRLINE_ID", $"OP_CARRIER_FL_NUM", $"FL_DATE", $"ORIGIN_AIRPORT_ID", $"DEST_AIRPORT_ID"))
+      concat_ws("_", computeLineUdf($"ORIGIN_AIRPORT_ID", $"DEST_AIRPORT_ID"), $"FL_DATE", $"OP_CARRIER_AIRLINE_ID", $"OP_CARRIER_FL_NUM"))
       .drop("OP_CARRIER_AIRLINE_ID", "OP_CARRIER_FL_NUM")
     //Utility.log(Data.schema.treeString)
-    Utility.show(data.select("FL_ID", "FL_DATE", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "WEATHER_DELAY"))
+    Utility.show(data)
 
     // remove cancelled and diverted data
     Utility.log("Removing cancelled and diverted flights (they are out of this analysis)...")
     data = data.filter("CANCELLED + DIVERTED = 0").drop("CANCELLED", "DIVERTED")
-    Utility.log(s"flights dataset without cancelled and diverted flights: ${Utility.count(data)}")
+    //Utility.log(s"flights dataset without cancelled and diverted flights: ${Utility.count(data)}")
 
     Utility.log("Removing non-weather related delayed records...")
-    data = data.filter(s"ARR_DELAY_NEW <= ${config.flightsDelayThreshold} or  WEATHER_DELAY + NAS_DELAY >= ${config.flightsDelayThreshold} ")
-    Utility.log(s"flights dataset without non-weather related delay records: ${Utility.count(data)}")
+
+    data = data.filter(s"ARR_DELAY_NEW <= ${config.flightsDelayThreshold} " +
+      s"or  WEATHER_DELAY + NAS_DELAY >= ${config.flightsDelayThreshold} ")
+    //Utility.log(s"flights dataset without non-weather related delay records: ${Utility.count(data)}")
 
     Utility.log("computing FL_ONTIME flag (1=on-time; 0=delayed)")
     data = data.withColumn("FL_ONTIME", ($"ARR_DELAY_NEW" <= config.flightsDelayThreshold).cast(DoubleType))
       .drop("WEATHER_DELAY", "NAS_DELAY")
-
-    Utility.show(data.select("FL_ID", "FL_DATE", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_ONTIME"))
+    //Utility.show(data.select("FL_ID", "FL_DATE", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_ONTIME"))
 
     Utility.log("mapping flights with the weather stations...")
     data = data.join(mappingData, $"ORIGIN_AIRPORT_ID" === $"AirportId", "inner")
       .drop("AirportId")
-    Utility.log(s"flights data after the mapping: ${Utility.count(data)}")
+    //Utility.show(data.select("FL_ID", "FL_ONTIME", "FL_DATE", "CRS_DEP_TIME", "TimeZone"))
+    //Utility.log(s"flights data after the mapping: ${Utility.count(data)}")
 
     Utility.log("computing FL_DATE, FL_DEP_TIME and FL_ARR_TIME")
     data = data.withColumn("FL_DEP_TIME", unix_timestamp(concat_ws("", $"FL_DATE", $"CRS_DEP_TIME"), "yyyy-MM-ddHHmm").minus($"TimeZone"))
       .withColumn("FL_ARR_TIME", ($"FL_DEP_TIME" + $"CRS_ELAPSED_TIME" * 60).cast(LongType))
       .select("FL_ID", "FL_DEP_TIME", "FL_ARR_TIME", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_ONTIME")
 
-    if (config.mlBalanceDataset)
-      data = balanceDataset(data)
+    //Utility.show(data.filter("FL_ONTIME = 0").limit(12).union(data.filter("FL_ONTIME = 1").limit(10)).sample(false, 0.99))
+
+    //    if (config.mlBalanceDataset)
+    //      data = balanceDataset(data)
     if (config.flightsFrac > 0 && config.flightsFrac != 1)
       data = data.sample(withReplacement = false, config.flightsFrac)
 
-    Utility.log(s"number of flights used for the analysis: ${Utility.count(data)}")
-    Utility.show(data)
-
+    //Utility.log(s"number of flights used for the analysis: ${Utility.count(data)}")
+    //Utility.show(data)
     data
+
   }
 
   def loadWeatherData(path: Array[String], mappingData: DataFrame, testMode: Boolean): DataFrame = {
@@ -90,7 +96,6 @@ class DataLoader(config: Configuration) {
     var data = path.map(Utility.sparkSession.read.format("csv")
       .option("header", "true").option("inferSchema", "false").load(_)).reduce(_ union _)
       .select(Array(col("WBAN"), col("Date"), col("Time")) ++ weatherCondColumns.map(c => col(c)): _*)
-    //Utility.log(Data.schema.treeString)
     Utility.log(s"weather initial number of records: ${Utility.count(data)};")
     Utility.show(data)
 
@@ -137,13 +142,11 @@ class DataLoader(config: Configuration) {
       val oneHotEncoder = new OneHotEncoder()
         .setInputCols(categoricalVariables.map(c => c + "Category"))
         .setOutputCols(categoricalVariables.map(c => c + "Vect"))
-
       // creating vector assembler transformer to group the weather conditions features to one column
       val vectorAssembler = new VectorAssembler()
         .setInputCols(categoricalVariables.map(c => c + "Vect") ++ continuousVariables)
         .setOutputCol("WEATHER_COND")
-
-      // the transformation pipeline that assemble and index the features
+      // the transformation pipeline that transforms categorial variables and assembles all variable into feature column
       val pipeline = new Pipeline().setStages(Array(oneHotEncoder, vectorAssembler))
       Utility.log("fitting features (one-hot encoding + vector assembler)...")
       pipelineModel = pipeline.fit(data)
@@ -156,17 +159,6 @@ class DataLoader(config: Configuration) {
     }
     Utility.log("transforming features (one-hot encoding + vector assembler)...")
     data = pipelineModel.transform(data)
-    // affichage des variables (à utiliser dans le rapport)
-    Utility.show(data.select("SkyCondition", "SkyConditionLowCategory", "SkyConditionMediumCategory", "SkyConditionHighCategory"))
-    Utility.show(data.select("SkyCondition", "SkyConditionLowVect", "SkyConditionMediumVect", "SkyConditionHighVect"))
-    Utility.show(data.select("WeatherType", "WeatherTypeCategory", "WeatherTypeVect").where("WeatherTypeCategory<>0"))
-    Utility.show(data.select("WindDirection", "WindDirectionCategory", "WindDirectionVect"))
-    Utility.show(data.where("StationPressure <> -1 and RelativeHumidity <> -1 and WeatherTypeCategory <> 0")
-      .select("SkyConditionLowVect", "SkyConditionMediumVect", "SkyConditionHighVect"
-        , "SkyConditionHighVect", "WeatherTypeVect",
-        "StationPressure", "RelativeHumidity", "WindSpeed", "Visibility", "DryBulbCelsius", "WEATHER_COND"))
-    Utility.show(data.where("StationPressure <> -1 and RelativeHumidity <> -1 and WeatherTypeCategory <> 0 and Visibility <> 10")
-      .select("AIRPORTID", "WEATHER_TIME", "WEATHER_COND"))
 
     data.select("AIRPORTID", "WEATHER_COND", "WEATHER_TIME")
   }
@@ -180,6 +172,7 @@ class DataLoader(config: Configuration) {
     Utility.log("repartitioning dep...")
     val balancedWeatherData = weatherData.repartition($"AIRPORTID")
     Utility.log("joining dep...")
+
     val depData = flightData.select("FL_ID", "FL_DEP_TIME", "ORIGIN_AIRPORT_ID", "FL_ONTIME")
       .join(balancedWeatherData.as("dep"), $"ORIGIN_AIRPORT_ID" === $"dep.AIRPORTID", "inner")
       .where(s"dep.WEATHER_TIME >= FL_DEP_TIME - $tf and dep.WEATHER_TIME <= FL_DEP_TIME ")
@@ -206,8 +199,13 @@ class DataLoader(config: Configuration) {
         collect_list($"arr.WEATHER_TIME").as("DEST_WEATHER_TIME"),
         collect_list($"arr.WEATHER_COND").as("DEST_WEATHER_COND"))
 
+    //Utility.log(data.schema.treeString)
+    //Utility.show(data, truncate = true)
 
     Utility.log("partitions :" + data.rdd.getNumPartitions)
+    if (config.mlBalanceDataset) {
+      data = balanceDataset(data)
+    }
 
     Utility.log("filling missing weather records for each flight ...")
     data = data.withColumn("WEATHER_COND",
@@ -219,29 +217,28 @@ class DataLoader(config: Configuration) {
       .drop("FL_DEP_TIME", "ORIGIN_WEATHER_TIME", "ORIGIN_WEATHER_COND",
         "FL_ARR_TIME", "DEST_WEATHER_TIME", "DEST_WEATHER_COND")
       .filter("WEATHER_COND is not null")
-    Utility.log(s"data after filling: ${Utility.count(data)}")
-
-    if (config.mlBalanceDataset) {
-      data = balanceDataset(data)
-    }
-    data = data.drop("FL_ID")
-    Utility.show(data, truncate = true)
+    //Utility.log(s"data after filling: ${Utility.count(data)}")
+    //Utility.show(data, truncate = true)
 
     data
   }
 
   def balanceDataset(data: DataFrame): DataFrame = {
     Utility.log(s"balancing the dataset...")
-    //Utility.log(s"number of records: ${Utility.count(data)}")
+
     Utility.log(s"repartitioning the dataset...")
-    var balancedData = data.repartition($"FL_ONTIME")
+    var balancedData = data.select("Fl_ID", "FL_ONTIME").repartition($"FL_ONTIME")
     Utility.log(s"counting delayed and on-time flights...")
-    val Array(count0, count1) = Array(0, 1).map(f => balancedData.filter(s"FL_ONTIME = $f").count())
-    val Array(index0, index1, r) = if (count1 > count0) Array(0, 1, 1.0 * count0 / count1) else Array(1, 0, 1.0 * count1 / count0)
-    Utility.log(s"number of on-time flights=$count1, number of delayed flights=$count0")
-    balancedData = balancedData.filter(s"FL_ONTIME = $index1").sample(withReplacement = false, r)
-      .union(balancedData.filter(s"FL_ONTIME = $index0"))
+    // number of delayed flights
+    val nbDelayed = balancedData.filter(s"FL_ONTIME = 0").count()
+    // number of on-time flights
+    val nbOnTime = balancedData.filter(s"FL_ONTIME = 1").count()
+    //balancing map (we take the number of delayed flights as on-time ones)
+    val fractions = Map(0.0 -> 1.0, 1.0 -> nbDelayed.toDouble / nbOnTime)
+    balancedData = balancedData.stat.sampleBy("FL_ONTIME", fractions, 42L)
+    Utility.log("joining...")
+    balancedData = data.join(balancedData.as("b"), Array("FL_ID", "FL_ONTIME"), "inner")
+      .drop("b.FL_ID", "b.FL_ONTIME")
     balancedData
   }
-
 }

@@ -10,6 +10,7 @@ import org.json4s.jackson.JsonMethods._
 
 import scala.io.Source
 
+
 object Utility {
 
   @transient lazy val logger: Logger = Logger.getLogger("$")
@@ -47,7 +48,6 @@ object Utility {
     f.close()
     if (config.partitions > 0) {
       sparkSession.conf.set("spark.sql.shuffle.partitions", config.partitions)
-
     }
     config
   }
@@ -92,8 +92,8 @@ object UdfUtility extends Serializable {
   }
 
   val fillWeatherDataUdf: UserDefinedFunction = udf((originTime: Long, depTimes: Seq[Long], depWeatherConds: Seq[Vector],
-                                                     destTime: Long, arrTimes: Seq[Long], arrWeatherConds: Seq[Vector],
-                                                     frame: Int, step: Int) => {
+                                                      destTime: Long, arrTimes: Seq[Long], arrWeatherConds: Seq[Vector],
+                                                      frame: Int, step: Int) => {
     var res: Seq[Double] = null
     val depData = fillMissingData(originTime, depTimes, depWeatherConds, frame, step)
     if (depData != null) {
@@ -156,7 +156,13 @@ object UdfUtility extends Serializable {
     if (str == "M") -1 else if (str.toDouble >= 10) 10 else str.toDouble
   })
 
-  val toDenseUdf: UserDefinedFunction = udf((vect: Vector) => {
-    vect.toDense.toArray
+  val computeLineUdf: UserDefinedFunction = udf((airport1: String, airport2: String) => {
+    try {
+      val id1 = airport1.toInt
+      val id2 = airport2.toInt
+      Math.min(id1, id2) + "_" + Math.max(id1, id2)
+    } catch {
+      case _: Exception => null
+    }
   })
 }
