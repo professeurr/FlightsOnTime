@@ -1,84 +1,93 @@
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.broadcast
 
 object Main {
 
   def main(args: Array[String]): Unit = {
 
+    val dt = 1000000000
     val t0 = System.nanoTime()
     Utility.log("[START]")
 
     try {
       val config = Utility.config
 
+      var data: DataFrame = null
+
       val dataLoader = new DataLoader(config)
-      // broadcast this dataset which is small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
-      val airportWbanData = broadcast(dataLoader.loadStationsData())
+      // we define here the set of models we want to train or test (in production mode)
+      val models = List[FlightModel](new FlightWeatherRandomForest(config)) //(new FlightDelayCrossValidation, new FlightWeatherDecisionTree(), new FlightWeatherRandomForest() /*, new FlightWeatherLogisticRegression()*/)
 
-      val models = List[FlightModel](new FlightDelayCrossValidation) //(new FlightWeatherDecisionTree(), new FlightWeatherRandomForest() /*, new FlightWeatherLogisticRegression()*/)
-      if (config.trainModel) {
+      if (config.mlMode.contains("data")) {
         Utility.log("[TRAINING DATA PREPARATION]")
+        // broadcast this dataset which is small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
+        val airportWbanData = broadcast(dataLoader.loadStationsData())
+        new DataFeaturing(config).prepFlights(airportWbanData)
+          .prepWeather(airportWbanData)
+      }
+      else if (config.mlMode.contains("train")) {
+        val flightData = dataLoader.loadFlightData().cache()
+        Utility.log(s"[flightDataLoad elapsed: ${(System.nanoTime() - t0) / dt} s]")
 
-        val weatherData = dataLoader.loadWeatherData(config.weatherPath, airportWbanData, false).cache()
-        var t1 = System.nanoTime()
-        Utility.log(s"[weatherDataLoad elapsed: ${(t1 - t0) / 1000000000} s]")
+        val t1 = System.nanoTime()
+        val weatherData = dataLoader.loadWeatherData().cache()
+        Utility.log(s"[weatherDataLoad elapsed: ${(t1 - t0) / dt} s]")
 
-        val flightData = dataLoader.loadFlightData(config.flightsPath, airportWbanData).cache()
-        Utility.log(s"[flightDataLoad elapsed: ${(System.nanoTime() - t0) / 1000000000} s]")
+        data = dataLoader.combineData(flightData, weatherData).cache()
+        Utility.log(s"[data combining elapsed: ${(System.nanoTime() - t1) / dt} s]")
+        Utility.log(s"[data preparation elapsed: ${(System.nanoTime() - t0) / dt} s]")
 
-        t1 = System.nanoTime()
-        val data = dataLoader.combineData(flightData, weatherData).cache()
-        Utility.log(s"[data combining elapsed: ${(System.nanoTime() - t1) / 1000000000} s]")
-        Utility.log(s"[data preparation elapsed: ${(System.nanoTime() - t0) / 1000000000} s]")
-
+        // split the dataset into training and testing set
         var Array(trainingData, testData) = data.randomSplit(Array(0.70, 0.30))
         trainingData = trainingData.cache()
         testData = testData.cache()
 
-        Utility.log("[TRAINING MACHINE LEARNING]")
+        Utility.log("[MACHINE LEARNING MODEL]")
         models.foreach(model => {
           Utility.log(s"Training the model ${model.getName} on training data...")
           model.fit(trainingData)
-          model.save(config.modelPath)
+          model.save(config.persistPath)
+
           Utility.log(s"Evaluating the model ${model.getName} on training data...")
-//          var prediction = model.evaluate(trainingData)
-//          Utility.log(s"Performance of the model ${model.getName} on training data...")
-//          model.summarize(prediction)
+          var prediction = model.evaluate(trainingData)
+          Utility.log(s"Performance of the model ${model.getName} on training data...")
+          model.summarize(prediction)
+
           Utility.log(s"Evaluating the model ${model.getName} on test data...")
-          val prediction = model.evaluate(testData)
+          prediction = model.evaluate(testData)
           Utility.log(s"Performance of the model ${model.getName} on test data...")
           model.summarize(prediction)
         })
-        try {
-          Utility.sparkSession.sqlContext.clearCache()
-        } catch {
-          case _: Exception => ()
-        }
       }
 
-      if (config.testModel) {
-        Utility.log("[OFFLINE TESTING]")
-        Utility.log("[TESTING DATA PREPARATION]")
-        // broadcast this dataset which is small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
-        val testingWeatherData = dataLoader.loadWeatherData(config.weatherTestPath, airportWbanData, true).cache()
-        val testingFlightData = dataLoader.loadFlightData(config.flightsTestPath, airportWbanData).cache()
-        val testingData = dataLoader.combineData(testingFlightData, testingWeatherData).cache()
+      //      if (config.mlMode.contains("test")) {
+      //        Utility.log("[OFFLINE TESTING]")
+      //
+      //        Utility.log("[TESTING DATA PREPARATION]")
+      //        // broadcast this dataset which is small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
+      //        val testingWeatherData = dataLoader.loadWeatherData(config.weatherPath, airportWbanData).cache()
+      //        val testingFlightData = dataLoader.loadFlightData(config.flightsPath, airportWbanData).cache()
+      //        val testingData = dataLoader.combineData(testingFlightData, testingWeatherData).cache()
+      //
+      //        Utility.log("[TESTING MACHINE LEARNING]")
+      //        models.foreach(model => {
+      //          Utility.log(s"Evaluating the model ${model.getName} on offline testing data...")
+      //          val prediction = model.evaluate(testingData)
+      //          Utility.log(s"Performance of the model ${model.getName} on offline testing data...")
+      //          model.summarize(prediction)
+      //        })
+      //      }
+    }
 
-        Utility.log("[TESTING MACHINE LEARNING]")
-        models.foreach(model => {
-          Utility.log(s"Evaluating the model ${model.getName} on testing data...")
-          val prediction = model.evaluate(config.modelPath, testingData)
-          Utility.log(s"Performance of the model ${model.getName} on testing data...")
-          model.summarize(prediction)
-        })
-        Utility.sparkSession.sqlContext.clearCache()
-      }
-    } catch {
+    catch {
       case e: Exception =>
         Utility.log(e.toString)
-    } finally {
+    }
+    finally {
       Utility.destroy()
     }
 
     Utility.log(s"[END: ${(System.nanoTime() - t0) / 1000000000} s]")
   }
+
 }

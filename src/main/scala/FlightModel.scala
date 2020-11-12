@@ -17,17 +17,17 @@ trait FlightModel {
 
   // evaluate trained model
   def evaluate(modelPath: String, testData: DataFrame): DataFrame = {
-    pipelineModel = PipelineModel.load(modelPath + "rf.model")
+    pipelineModel = PipelineModel.load(modelPath)
     pipelineModel.transform(testData)
   }
 
   def save(path: String): Unit = {
     Utility.log(s"saving the model $getName...")
-    pipelineModel.write.overwrite.save(path + "cv.model")
+    pipelineModel.write.overwrite.save(path)
   }
 
   def summarize(predictions: DataFrame): Unit = {
-    predictions.select("FL_ONTIME", "prediction").show()
+    //predictions.select("FL_ONTIME", "prediction").show()
     val rdd = predictions.select("prediction", "FL_ONTIME").rdd.map(row => (row.getDouble(0), row.getDouble(1)))
     val multiclassMetrics = new MulticlassMetrics(rdd)
     val binaryClassMetrics = new BinaryClassificationMetrics(rdd)
@@ -46,7 +46,7 @@ trait FlightModel {
   }
 }
 
-class FlightDelayCrossValidation() extends FlightModel {
+class FlightDelayCrossValidation(configuration: Configuration) extends FlightModel {
   override def getName: String = {
     "CrossValidation"
   }
@@ -67,12 +67,12 @@ class FlightDelayCrossValidation() extends FlightModel {
 
     // use ParamGridBuilder to specify the parameters to search over and their range of values
     val paramGrid = new ParamGridBuilder()
-//      .addGrid(dt.maxDepth, Array(3, 5, 7))
-//      .addGrid(dt.maxBins, Array(5, 10, 20))
-//      .addGrid(dt.impurity, Array("gini", "entropy"))
+      //      .addGrid(dt.maxDepth, Array(3, 5, 7))
+      //      .addGrid(dt.maxBins, Array(5, 10, 20))
+      //      .addGrid(dt.impurity, Array("gini", "entropy"))
       .addGrid(rf.maxDepth, Array(3, 5, 10))
       .addGrid(rf.numTrees, Array(5, 10))
-      .addGrid(rf.maxBins, Array(5, 10, 20))
+      .addGrid(rf.maxBins, Array(5, 10))
       .addGrid(rf.impurity, Array("gini", "entropy"))
       .build()
 
@@ -104,8 +104,7 @@ class FlightDelayCrossValidation() extends FlightModel {
   }
 
   override def evaluate(testData: DataFrame): DataFrame = {
-    Utility.log(s"evaluating the model $getName on the test data...")
-    pipelineModel.transform(testData)
+    super.evaluate(configuration.persistPath + "cv.model", testData)
   }
 
   override def save(path: String): Unit = {
@@ -113,14 +112,13 @@ class FlightDelayCrossValidation() extends FlightModel {
   }
 }
 
-class FlightWeatherDecisionTree() extends FlightModel {
+class FlightWeatherDecisionTree(configuration: Configuration) extends FlightModel {
 
   override def getName: String = {
     "DecisionTree"
   }
 
   override def fit(trainingData: DataFrame): FlightModel = {
-    Utility.log(s"Training $getName model on the training data")
     val dt = new DecisionTreeClassifier()
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
@@ -130,8 +128,7 @@ class FlightWeatherDecisionTree() extends FlightModel {
   }
 
   override def evaluate(testData: DataFrame): DataFrame = {
-    Utility.log(s"evaluating the model $getName on the test data...")
-    pipelineModel.transform(testData)
+    super.evaluate(configuration.persistPath + "df.model", testData)
   }
 
   override def save(path: String): Unit = {
@@ -139,15 +136,13 @@ class FlightWeatherDecisionTree() extends FlightModel {
   }
 }
 
-
-class FlightWeatherRandomForest() extends FlightModel {
+class FlightWeatherRandomForest(configuration: Configuration) extends FlightModel {
 
   override def getName: String = {
     "RandomForest"
   }
 
   override def fit(trainingData: DataFrame): FlightModel = {
-    Utility.log(s"Training $getName model on the training data")
     val rf = new RandomForestClassifier()
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
@@ -157,8 +152,7 @@ class FlightWeatherRandomForest() extends FlightModel {
   }
 
   override def evaluate(testData: DataFrame): DataFrame = {
-    Utility.log(s"evaluating the model $getName on the test data...")
-    pipelineModel.transform(testData)
+    super.evaluate(configuration.persistPath + "rf.model", testData)
   }
 
   override def save(path: String): Unit = {

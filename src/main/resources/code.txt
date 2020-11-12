@@ -1,24 +1,79 @@
-+---------------------------------+---------+--------+
-|FL_ID                            |CANCELLED|DIVERTED|
-+---------------------------------+---------+--------+
-|11503_13930_2013-01-01_19805_512 |1.0      |0.0     |
-|11298_14492_2013-01-01_19805_840 |1.0      |0.0     |
-|11298_14107_2013-01-01_19805_862 |1.0      |0.0     |
-|11298_14869_2013-01-01_19805_871 |0.0      |1.0     |
-|11298_11697_2013-01-01_19805_1515|1.0      |0.0     |
-|11697_12478_2013-01-01_20409_125 |1.0      |0.0     |
-|11618_15016_2013-01-01_20366_3806|0.0      |1.0     |
-|11618_13851_2013-01-01_20366_4204|0.0      |1.0     |
-|11298_12448_2013-01-01_20398_2934|1.0      |0.0     |
-|11298_12511_2013-01-01_20398_3245|1.0      |0.0     |
-|14057_14489_2013-01-01_20304_5440|1.0      |0.0     |
-|12953_15919_2013-01-01_20398_4413|0.0      |1.0     |
-|10140_14107_2013-01-01_20378_2804|1.0      |0.0     |
-|11298_12478_2013-01-01_20363_3325|0.0      |1.0     |
-|12451_12478_2013-01-01_20363_3358|1.0      |0.0     |
-|11298_12953_2013-01-01_19805_791 |1.0      |0.0     |
-|13303_13930_2013-01-01_19805_809 |1.0      |0.0     |
-|11298_12953_2013-01-01_19805_736 |1.0      |0.0     |
-|11298_13198_2013-01-01_19805_1026|1.0      |0.0     |
-|12892_13930_2013-01-01_19805_1047|1.0      |0.0     |
-+---------------------------------+---------+--------+
+12 mois/15'
+2020-11-19 02:27:03,588 INFO $: RandomForest metrics
+        Accuracy         : 66%
+        Area Under ROC   : 66%
+        Delayed Recall   : 58%
+        Delayed Precision: 67%
+        OnTime Recall    : 73%
+        OnTime Precision : 65%
+2020-11-19 02:27:03,588 INFO $: Evaluating the model RandomForest on test data...
+2020-11-19 02:27:04,379 INFO $: Performance of the model RandomForest on test data...
+2020-11-19 02:27:14,748 INFO $: RandomForest metrics
+        Accuracy         : 66%
+        Area Under ROC   : 66%
+        Delayed Recall   : 58%
+        Delayed Precision: 67%
+        OnTime Recall    : 73%
+        OnTime Precision : 64%
+2020-11-19 02:27:14,809 INFO $: [END: 592 s]
+
+
+12 mois / 30'
+2020-11-19 03:52:57,279 INFO $: RandomForest metrics
+        Accuracy         : 70%
+        Area Under ROC   : 70%
+        Delayed Recall   : 67%
+        Delayed Precision: 71%
+        OnTime Recall    : 72%
+        OnTime Precision : 69%
+2020-11-19 03:52:57,279 INFO $: Evaluating the model RandomForest on test data...
+2020-11-19 03:52:58,017 INFO $: Performance of the model RandomForest on test data...
+2020-11-19 03:53:02,807 INFO $: RandomForest metrics
+        Accuracy         : 70%
+        Area Under ROC   : 70%
+        Delayed Recall   : 67%
+        Delayed Precision: 71%
+        OnTime Recall    : 73%
+        OnTime Precision : 69%
+2020-11-19 03:53:02,871 INFO $: [END: 344 s]
+
+
+12 mois / 45'
+2020-11-19 03:42:17,677 INFO $: RandomForest metrics
+        Accuracy         : 71%
+        Area Under ROC   : 71%
+        Delayed Recall   : 70%
+        Delayed Precision: 71%
+        OnTime Recall    : 72%
+        OnTime Precision : 70%
+2020-11-19 03:42:17,677 INFO $: Evaluating the model RandomForest on test data...
+2020-11-19 03:42:18,349 INFO $: Performance of the model RandomForest on test data...
+2020-11-19 03:42:22,274 INFO $: RandomForest metrics
+        Accuracy         : 71%
+        Area Under ROC   : 71%
+        Delayed Recall   : 70%
+        Delayed Precision: 71%
+        OnTime Recall    : 71%
+        OnTime Precision : 71%
+2020-11-19 03:42:22,340 INFO $: [END: 235 s]
+
+
+12 mois / 60'
+20/11/19 02:49:39 INFO $: RandomForest metrics
+        Accuracy         : 72%
+        Area Under ROC   : 72%
+        Delayed Recall   : 73%
+        Delayed Precision: 71%
+        OnTime Recall    : 71%
+        OnTime Precision : 72%
+20/11/19 02:49:39 INFO $: Evaluating the model RandomForest on test data...
+20/11/19 02:49:41 INFO $: Performance of the model RandomForest on test data...
+20/11/19 02:49:42 INFO $: RandomForest metrics
+        Accuracy         : 72%
+        Area Under ROC   : 72%
+        Delayed Recall   : 73%
+        Delayed Precision: 71%
+        OnTime Recall    : 71%
+        OnTime Precision : 72%
+20/11/19 02:49:42 INFO $: [END: 145 s]
+

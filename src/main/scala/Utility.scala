@@ -22,7 +22,7 @@ object Utility {
 
   lazy val sparkSession: SparkSession = SparkSession.builder()
     .appName(s"FlightOnTime${scala.util.Random.nextInt()}")
-    .config("spark.sql.broadcastTimeout", -1)
+    //.config("spark.sql.autoBroadcastJoinThreshold", -1)
     .getOrCreate()
 
   def initialize: Configuration = {
@@ -46,9 +46,6 @@ object Utility {
     val json = parse(f.getLines().mkString)
     config = json.camelizeKeys.extract[Configuration]
     f.close()
-    if (config.partitions > 0) {
-      sparkSession.conf.set("spark.sql.shuffle.partitions", config.partitions)
-    }
     config
   }
 
@@ -62,12 +59,12 @@ object Utility {
   }
 
   def show(data: DataFrame, truncate: Boolean = false): Unit = {
-    if (!config.clusterMode)
+    if (!config.verbose)
       data.show(truncate = truncate)
   }
 
   def count(data: DataFrame): String = {
-    if (!config.clusterMode) data.count().toString else "---"
+    if (!config.verbose) data.count().toString else "---"
   }
 }
 

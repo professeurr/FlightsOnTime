@@ -3,8 +3,12 @@ spark-submit \
   --deploy-mode client \
   --executor-cores 4 \
   --num-executors 2 \
-  --executor-memory 3G \
+  --executor-memory 4G \
   --files ./config.json \
+  --conf spark.sql.autoBroadcastJoinThreshold=-1 \
+  --conf spark.sql.shuffle.partitions=7 \
+  --conf spark.executor.memoryOverhead=1024 \
+  --conf spark.driver.memoryOverhead=4096 \
   --class Main \
   target/scala-2.12/flightsontime_klouvi_riva_2.12-1.0.jar
 
