@@ -14,7 +14,7 @@ object Main {
       // broadcast this dataset which is small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
       val airportWbanData = broadcast(dataLoader.loadStationsData())
 
-      val models = List[FlightModel](new FlightWeatherDecisionTree(), new FlightWeatherRandomForest() /*, new FlightWeatherLogisticRegression()*/)
+      val models = List[FlightModel](new FlightDelayCrossValidation) //(new FlightWeatherDecisionTree(), new FlightWeatherRandomForest() /*, new FlightWeatherLogisticRegression()*/)
       if (config.trainModel) {
         Utility.log("[TRAINING DATA PREPARATION]")
 
@@ -40,11 +40,11 @@ object Main {
           model.fit(trainingData)
           model.save(config.modelPath)
           Utility.log(s"Evaluating the model ${model.getName} on training data...")
-          var prediction = model.evaluate(trainingData)
-          Utility.log(s"Performance of the model ${model.getName} on training data...")
-          model.summarize(prediction)
+//          var prediction = model.evaluate(trainingData)
+//          Utility.log(s"Performance of the model ${model.getName} on training data...")
+//          model.summarize(prediction)
           Utility.log(s"Evaluating the model ${model.getName} on test data...")
-          prediction = model.evaluate(testData)
+          val prediction = model.evaluate(testData)
           Utility.log(s"Performance of the model ${model.getName} on test data...")
           model.summarize(prediction)
         })

@@ -16,11 +16,11 @@
   "weather_test_path": [
     "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/weather/full/201304hourly.txt"
   ],
-  "model_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/model/full/",
+  "model_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/model/",
   "train_model": true,
   "test_model": false,
   "flights_delay_threshold": 15,
-  "flights_frac":1,
+  "flights_frac":0.4,
   "weather_time_frame": 12,
   "weather_time_step": 1,
   "ml_balance_dataset": true,

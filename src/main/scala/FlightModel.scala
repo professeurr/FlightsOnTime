@@ -1,11 +1,13 @@
-import org.apache.spark.ml.classification.{DecisionTreeClassifier, LogisticRegression, RandomForestClassifier}
+import org.apache.spark.ml.classification.{DecisionTreeClassifier, RandomForestClassifier}
+import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
+import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel}
-import org.apache.spark.mllib.evaluation.MulticlassMetrics
+import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.sql.DataFrame
 
 trait FlightModel {
 
-  var model: PipelineModel = _
+  var pipelineModel: PipelineModel = _
 
   def getName: String
 
@@ -15,26 +17,99 @@ trait FlightModel {
 
   // evaluate trained model
   def evaluate(modelPath: String, testData: DataFrame): DataFrame = {
-    model = PipelineModel.load(modelPath + "rf.model")
-    model.transform(testData)
+    pipelineModel = PipelineModel.load(modelPath + "rf.model")
+    pipelineModel.transform(testData)
   }
 
-  def save(path: String): Unit
+  def save(path: String): Unit = {
+    Utility.log(s"saving the model $getName...")
+    pipelineModel.write.overwrite.save(path + "cv.model")
+  }
 
   def summarize(predictions: DataFrame): Unit = {
-    val rdd = predictions.select("FL_ONTIME", "prediction").rdd.map(row => (row.getDouble(0), row.getDouble(1)))
-    val metrics = new MulticlassMetrics(rdd)
+    predictions.select("FL_ONTIME", "prediction").show()
+    val rdd = predictions.select("prediction", "FL_ONTIME").rdd.map(row => (row.getDouble(0), row.getDouble(1)))
+    val multiclassMetrics = new MulticlassMetrics(rdd)
+    val binaryClassMetrics = new BinaryClassificationMetrics(rdd)
     val metricsDF = Seq(
-      ("Accuracy         ", metrics.accuracy),
-      ("Delayed Recall   ", metrics.recall(0.0)),
-      ("Delayed Precision", metrics.precision(0.0)),
-      ("OnTime Recall    ", metrics.recall(1.0)),
-      ("OnTime Precision ", metrics.precision(1.0)))
+      ("Accuracy         ", multiclassMetrics.accuracy),
+      ("Area Under ROC   ", binaryClassMetrics.areaUnderROC()),
+      ("Delayed Recall   ", multiclassMetrics.recall(0.0)),
+      ("Delayed Precision", multiclassMetrics.precision(0.0)),
+      ("OnTime Recall    ", multiclassMetrics.recall(1.0)),
+      ("OnTime Precision ", multiclassMetrics.precision(1.0)))
       .map(r => "\t" + r._1 + s": ${Math.round(100 * r._2)}%")
       .mkString("\n")
 
     Utility.log(s"$getName metrics\n$metricsDF")
     //metricsDF
+  }
+}
+
+class FlightDelayCrossValidation() extends FlightModel {
+  override def getName: String = {
+    "CrossValidation"
+  }
+
+  override def fit(trainingData: DataFrame): FlightModel = {
+    // create decision tree model
+    val dt = new DecisionTreeClassifier()
+      .setLabelCol("FL_ONTIME")
+      .setFeaturesCol("WEATHER_COND")
+
+    // create random forest model
+    val rf = new RandomForestClassifier()
+      .setLabelCol("FL_ONTIME")
+      .setFeaturesCol("WEATHER_COND")
+
+    // configure an ML pipeline by adding the 2 models above
+    val pipeline = new Pipeline().setStages(Array(rf))
+
+    // use ParamGridBuilder to specify the parameters to search over and their range of values
+    val paramGrid = new ParamGridBuilder()
+//      .addGrid(dt.maxDepth, Array(3, 5, 7))
+//      .addGrid(dt.maxBins, Array(5, 10, 20))
+//      .addGrid(dt.impurity, Array("gini", "entropy"))
+      .addGrid(rf.maxDepth, Array(3, 5, 10))
+      .addGrid(rf.numTrees, Array(5, 10))
+      .addGrid(rf.maxBins, Array(5, 10, 20))
+      .addGrid(rf.impurity, Array("gini", "entropy"))
+      .build()
+
+    // create the evaluator
+    val evaluator = new BinaryClassificationEvaluator()
+      .setLabelCol("FL_ONTIME")
+      .setRawPredictionCol("prediction") // both decision tree and random forest produce a `prediction` column as output
+
+    // create the cross-validator instance where the pipeline is provided as an estimator,
+    // the evaluator and the paramMap. The number of fold is set to 3
+    // and we tell cross-validator engine to paralyze the search over 3 threads
+    val cv = new CrossValidator()
+      .setEstimator(pipeline)
+      .setEvaluator(evaluator)
+      .setEstimatorParamMaps(paramGrid)
+      .setNumFolds(3)
+      .setParallelism(3)
+
+    // run the cross-validation engine
+    val cvModel = cv.fit(trainingData)
+
+    // explain the parameters
+    cvModel.explainParams()
+
+    // get the best model with its optimal parameters for persistence and testing
+    pipelineModel = cvModel.bestModel.asInstanceOf[PipelineModel]
+    Utility.log("best model: " + pipelineModel.toString())
+    this
+  }
+
+  override def evaluate(testData: DataFrame): DataFrame = {
+    Utility.log(s"evaluating the model $getName on the test data...")
+    pipelineModel.transform(testData)
+  }
+
+  override def save(path: String): Unit = {
+    super.save(path + "cv.model")
   }
 }
 
@@ -49,66 +124,18 @@ class FlightWeatherDecisionTree() extends FlightModel {
     val dt = new DecisionTreeClassifier()
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
-      //.setWeightCol("WEIGHT")
     val pipeline = new Pipeline().setStages(Array(dt))
-    model = pipeline.fit(trainingData)
+    pipelineModel = pipeline.fit(trainingData)
     this
   }
 
   override def evaluate(testData: DataFrame): DataFrame = {
     Utility.log(s"evaluating the model $getName on the test data...")
-    model.transform(testData)
+    pipelineModel.transform(testData)
   }
 
   override def save(path: String): Unit = {
-    model.write.overwrite.save(path + "dt.model")
-  }
-}
-
-
-class FlightWeatherLogisticRegression() extends FlightModel {
-
-  override def getName: String = {
-    "LogisticRegression"
-  }
-
-  override def fit(trainingData: DataFrame): FlightModel = {
-    Utility.log(s"Training $getName model on the training data")
-    val lr = new LogisticRegression()
-      .setMaxIter(10)
-      .setRegParam(0.3)
-      .setElasticNetParam(0.8)
-      .setLabelCol("FL_ONTIME")
-      .setFeaturesCol("WEATHER_COND")
-    //.setWeightCol("WEIGHT")
-    val pipeline = new Pipeline().setStages(Array(lr))
-    model = pipeline.fit(trainingData)
-    this
-  }
-
-  override def evaluate(testData: DataFrame): DataFrame = {
-    Utility.log(s"evaluating the model $getName on the test data...")
-    model.transform(testData)
-  }
-
-  override def save(path: String): Unit = {
-    model.write.overwrite.save(path + "lr.model")
-  }
-
-  override def summarize(predictions: DataFrame): Unit = {
-    val rdd = predictions.select("FL_ONTIME", "prediction").rdd.map(row => (row.getDouble(0), row.getDouble(1)))
-    val metrics = new MulticlassMetrics(rdd)
-    val metricsDF = Seq(
-      ("Accuracy         ", metrics.accuracy),
-      ("Delayed Recall   ", metrics.recall(0.0)),
-      ("Delayed Precision", metrics.precision(0.0)),
-      ("OnTime Recall    ", metrics.recall(1.0)),
-      ("OnTime Precision ", metrics.precision(1.0)))
-      .map(r => "\t" + r._1 + s": ${Math.round(100 * r._2)}%")
-      .mkString("\n")
-
-    Utility.log(s"$getName metrics\n$metricsDF")
-    //metricsDF
+    super.save(path + "dt.model")
   }
 }
 
@@ -125,16 +152,16 @@ class FlightWeatherRandomForest() extends FlightModel {
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
     val pipeline = new Pipeline().setStages(Array(rf))
-    model = pipeline.fit(trainingData)
+    pipelineModel = pipeline.fit(trainingData)
     this
   }
 
   override def evaluate(testData: DataFrame): DataFrame = {
     Utility.log(s"evaluating the model $getName on the test data...")
-    model.transform(testData)
+    pipelineModel.transform(testData)
   }
 
   override def save(path: String): Unit = {
-    model.write.overwrite.save(path + "rf.model")
+    super.save(path + "rf.model")
   }
 }

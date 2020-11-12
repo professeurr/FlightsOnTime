@@ -56,7 +56,7 @@ class DataLoader(config: Configuration) {
     Utility.log("lines which have the longest delays...")
     data.select("FL_DATE", "FL_ID", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "ARR_DELAY_NEW")
       .filter("ARR_DELAY_NEW > 40")
-      .withColumn("Delay (Hour)", ($"ARR_DELAY_NEW"/60).cast(IntegerType))
+      .withColumn("Delay (Hour)", ($"ARR_DELAY_NEW" / 60).cast(IntegerType))
       .orderBy(desc("ARR_DELAY_NEW"))
       .show(truncate = false)
 
@@ -64,7 +64,7 @@ class DataLoader(config: Configuration) {
 
     Utility.log("some diverted or cancelled flights")
     data.select("FL_ID", "CANCELLED", "DIVERTED")
-      .filter("CANCELLED = 1 or DIVERTED = 0").show(truncate = false)
+      .filter("CANCELLED = 1 or DIVERTED = 1").show(truncate = false)
 
     Utility.log("number of cancelled or diverted flights...")
     data.select("FL_ID", "CANCELLED", "DIVERTED")
@@ -84,17 +84,21 @@ class DataLoader(config: Configuration) {
 
     data = data.filter(s"ARR_DELAY_NEW <= ${config.flightsDelayThreshold} " +
       s"or  WEATHER_DELAY + NAS_DELAY >= ${config.flightsDelayThreshold} ")
-    //Utility.log(s"flights dataset without non-weather related delay records: ${Utility.count(data)}")
+    val x = data.select("FL_ID", "ARR_DELAY_NEW", "WEATHER_DELAY", "NAS_DELAY")
+    Utility.show(x.filter("WEATHER_DELAY > 0").limit(10).union(x.filter("NAS_DELAY > 0").limit(10)))
 
     Utility.log("computing FL_ONTIME flag (1=on-time; 0=delayed)")
     data = data.withColumn("FL_ONTIME", ($"ARR_DELAY_NEW" <= config.flightsDelayThreshold).cast(DoubleType))
-      .drop("WEATHER_DELAY", "NAS_DELAY")
-    Utility.show(data.select("FL_ID", "FL_DATE", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_ONTIME"))
+    val y = data.select("FL_ID", "FL_ONTIME", "ARR_DELAY_NEW", "WEATHER_DELAY", "NAS_DELAY")
+    Utility.show(y.filter("FL_ONTIME = 0").limit(10).union(y.filter("FL_ONTIME = 1").limit(10)))
+    data = data.drop("WEATHER_DELAY", "NAS_DELAY")
 
     Utility.log("mapping flights with the weather stations...")
     data = data.join(mappingData, $"ORIGIN_AIRPORT_ID" === $"AirportId", "inner")
       .drop("AirportId")
-    Utility.show(data.select("FL_ID", "FL_ONTIME", "FL_DATE", "CRS_DEP_TIME", "TimeZone"))
+    Utility.show(data.select("FL_ID", "FL_ONTIME", "FL_DATE", "CRS_DEP_TIME", "TimeZone")
+      .withColumn("TimeZone (Hour)", ($"TimeZone" / 3600).cast(IntegerType))
+      .drop("TimeZone"))
     //Utility.log(s"flights data after the mapping: ${Utility.count(data)}")
 
     Utility.log("computing FL_DATE, FL_DEP_TIME and FL_ARR_TIME")
@@ -200,20 +204,26 @@ class DataLoader(config: Configuration) {
     val partionedWeatherData = weatherData.repartition($"AIRPORTID")
     Utility.log("joining dep...")
 
-    val depData = flightData.select("FL_ID", "FL_DEP_TIME", "ORIGIN_AIRPORT_ID", "FL_ONTIME")
+    var depData = flightData.select("FL_ID", "FL_DEP_TIME", "ORIGIN_AIRPORT_ID", "FL_ONTIME")
       .join(partionedWeatherData.as("dep"), $"ORIGIN_AIRPORT_ID" === $"dep.AIRPORTID", "inner")
       .where(s"dep.WEATHER_TIME >= FL_DEP_TIME - $tf and dep.WEATHER_TIME <= FL_DEP_TIME ")
       .drop("dep.AIRPORTID", "ORIGIN_AIRPORT_ID")
+    if(config.partitions > 0)
+      depData = depData.repartition(config.partitions)
     Utility.log("partitions dep:" + depData.rdd.getNumPartitions)
 
     Utility.log("repartitioning arr...")
-    val arrData = flightData.select("FL_ID", "FL_ARR_TIME", "DEST_AIRPORT_ID", "FL_ONTIME")
+    var arrData = flightData.select("FL_ID", "FL_ARR_TIME", "DEST_AIRPORT_ID", "FL_ONTIME")
       .join(partionedWeatherData.as("arr"), $"DEST_AIRPORT_ID" === $"arr.AIRPORTID", "inner")
       .where(s"arr.WEATHER_TIME >= FL_ARR_TIME - $tf and arr.WEATHER_TIME <= FL_ARR_TIME ")
       .drop("arr.AIRPORTID", "ORIGIN_AIRPORT_ID", "FL_ONTIME")
+    if(config.partitions > 0)
+      arrData = arrData.repartition(config.partitions)
     Utility.log("partitions arr:" + arrData.rdd.getNumPartitions)
 
     var data = depData.join(arrData, Array("FL_ID"))
+    if(config.partitions > 0)
+      data = data.repartition(config.partitions)
     Utility.log("partitions :" + data.rdd.getNumPartitions)
 
     Utility.log("grouping weather records for each flight...")
@@ -226,9 +236,8 @@ class DataLoader(config: Configuration) {
         collect_list($"arr.WEATHER_TIME").as("DEST_WEATHER_TIME"),
         collect_list($"arr.WEATHER_COND").as("DEST_WEATHER_COND"))
 
-    //Utility.log(data.schema.treeString)
-    //Utility.show(data, truncate = true)
-
+    if(config.partitions > 0)
+      data = data.repartition(config.partitions)
     Utility.log("partitions :" + data.rdd.getNumPartitions)
     if (config.mlBalanceDataset) {
       data = balanceDataset(data)

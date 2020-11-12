@@ -8,6 +8,7 @@ spark-submit \
   --class Main \
   target/scala-2.12/flightsontime_klouvi_riva_2.12-1.0.jar
 
+
  #e.g ./run.sh spark://127.0.0.1:7077 client
 
   #--executor-cores 5
