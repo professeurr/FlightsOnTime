@@ -6,6 +6,9 @@ id=159
 #scp -i ~/.ssh/id_rsa_user159 -P 993  ./data/flights/full/2012*.csv user$id@www.lamsade.dauphine.fr:~/data/flights
 
 scp -i ~/.ssh/id_rsa_user$id -P 993  ./target/scala-2.12/flightsontime_klouvi_riva_2.12-1.0.jar user$id@www.lamsade.dauphine.fr:~/projects/flights
+
+cp ./target/scala-2.12/flightsontime_klouvi_riva_2.12-1.0.jar ./bin/
+
 #scp -i ~/.ssh/id_rsa_user$id -P 993  ./config-remote.json user$id@www.lamsade.dauphine.fr:~/projects/flights/config.json
 #scp -i ~/.ssh/id_rsa_user159 -P 993  ./run-remote.sh user$id@www.lamsade.dauphine.fr:~/projects/flights
 
