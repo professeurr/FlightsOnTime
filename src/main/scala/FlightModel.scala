@@ -5,25 +5,28 @@ import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.sql.DataFrame
 
-trait FlightModel {
+abstract class FlightModel(configuration: Configuration) {
 
   var pipelineModel: PipelineModel = _
 
+  // our model's name used in the trace
   def getName: String
 
+  // name of the file where the pipeline is saved or loaded
+  def pipelineFilename: String
+
+  // the fit function to be implemented by each concrete class
   def fit(trainingData: DataFrame): FlightModel
 
-  def evaluate(testData: DataFrame): DataFrame
-
-  // evaluate trained model
-  def evaluate(modelPath: String, testData: DataFrame): DataFrame = {
-    pipelineModel = PipelineModel.load(modelPath)
+  // evaluate trained model on test dataset
+  def evaluate(testData: DataFrame): DataFrame = {
+    pipelineModel = PipelineModel.load(configuration.persistPath + pipelineFilename)
     pipelineModel.transform(testData)
   }
 
-  def save(path: String): Unit = {
+  def save(): Unit = {
     Utility.log(s"saving the model $getName...")
-    pipelineModel.write.overwrite.save(path)
+    pipelineModel.write.overwrite.save(configuration.persistPath + pipelineFilename)
   }
 
   def summarize(predictions: DataFrame): Unit = {
@@ -46,10 +49,11 @@ trait FlightModel {
   }
 }
 
-class FlightDelayCrossValidation(configuration: Configuration) extends FlightModel {
-  override def getName: String = {
-    "CrossValidation"
-  }
+class FlightDelayCrossValidation(configuration: Configuration) extends FlightModel(configuration) {
+
+  override def getName: String = "CrossValidation"
+
+  override def pipelineFilename: String = "model.cv"
 
   override def fit(trainingData: DataFrame): FlightModel = {
     // create decision tree model
@@ -103,20 +107,13 @@ class FlightDelayCrossValidation(configuration: Configuration) extends FlightMod
     this
   }
 
-  override def evaluate(testData: DataFrame): DataFrame = {
-    super.evaluate(configuration.persistPath + "cv.model", testData)
-  }
-
-  override def save(path: String): Unit = {
-    super.save(path + "cv.model")
-  }
 }
 
-class FlightWeatherDecisionTree(configuration: Configuration) extends FlightModel {
+class FlightDelayDecisionTree(configuration: Configuration) extends FlightModel(configuration) {
 
-  override def getName: String = {
-    "DecisionTree"
-  }
+  override def getName: String = "DecisionTree"
+
+  override def pipelineFilename: String = "model.cv"
 
   override def fit(trainingData: DataFrame): FlightModel = {
     val dt = new DecisionTreeClassifier()
@@ -126,24 +123,20 @@ class FlightWeatherDecisionTree(configuration: Configuration) extends FlightMode
     pipelineModel = pipeline.fit(trainingData)
     this
   }
-
-  override def evaluate(testData: DataFrame): DataFrame = {
-    super.evaluate(configuration.persistPath + "df.model", testData)
-  }
-
-  override def save(path: String): Unit = {
-    super.save(path + "dt.model")
-  }
 }
 
-class FlightWeatherRandomForest(configuration: Configuration) extends FlightModel {
+class FlightDelayRandomForest(configuration: Configuration) extends FlightModel(configuration) {
 
-  override def getName: String = {
-    "RandomForest"
-  }
+  override def getName: String = "RandomForest"
+
+  override def pipelineFilename: String = "model.rf"
 
   override def fit(trainingData: DataFrame): FlightModel = {
     val rf = new RandomForestClassifier()
+      .setMaxDepth(30)
+      .setMaxBins(5)
+      .setNumTrees(10)
+      .setImpurity("gini")
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
     val pipeline = new Pipeline().setStages(Array(rf))
@@ -151,11 +144,4 @@ class FlightWeatherRandomForest(configuration: Configuration) extends FlightMode
     this
   }
 
-  override def evaluate(testData: DataFrame): DataFrame = {
-    super.evaluate(configuration.persistPath + "rf.model", testData)
-  }
-
-  override def save(path: String): Unit = {
-    super.save(path + "rf.model")
-  }
 }

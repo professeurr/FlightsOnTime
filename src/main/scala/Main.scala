@@ -16,14 +16,15 @@ object Main {
 
       val dataLoader = new DataLoader(config)
       // we define here the set of models we want to train or test (in production mode)
-      val models = List[FlightModel](new FlightWeatherRandomForest(config)) //(new FlightDelayCrossValidation, new FlightWeatherDecisionTree(), new FlightWeatherRandomForest() /*, new FlightWeatherLogisticRegression()*/)
+      val models = List[FlightModel](new FlightDelayRandomForest(config)) //(new FlightDelayCrossValidation, new FlightDelayDecisionTree(), new FlightDelayRandomForest() /*, new FlightWeatherLogisticRegression()*/)
 
       if (config.mlMode.contains("data")) {
-        Utility.log("[TRAINING DATA PREPARATION]")
+        Utility.log("[DATA PREPARATION]")
         // broadcast this dataset which is small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
         val airportWbanData = broadcast(dataLoader.loadStationsData())
-        new DataFeaturing(config).prepFlights(airportWbanData)
-          .prepWeather(airportWbanData)
+        new DataFeaturing(config)
+          //.preloadFlights(airportWbanData)
+          .preloadWeather(airportWbanData)
       }
       else if (config.mlMode.contains("train")) {
         val flightData = dataLoader.loadFlightData().cache()
@@ -45,8 +46,7 @@ object Main {
         Utility.log("[MACHINE LEARNING MODEL]")
         models.foreach(model => {
           Utility.log(s"Training the model ${model.getName} on training data...")
-          model.fit(trainingData)
-          model.save(config.persistPath)
+          model.fit(trainingData).save()
 
           Utility.log(s"Evaluating the model ${model.getName} on training data...")
           var prediction = model.evaluate(trainingData)

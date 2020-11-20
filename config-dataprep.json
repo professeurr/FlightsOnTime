@@ -1,4 +1,22 @@
 {
+  "ml_mode": "data",
+  "wban_airports_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/wban_airport_timezone.csv",
+  "flights_path": [
+    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/flights/full/*"
+  ],
+  "weather_path": [
+    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/weather/full/*"
+  ],
+  "persist_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/persist/",
+
+  "flights_delay_threshold": 15,
+  "weather_time_frame": 12,
+  "weather_time_step": 1,
+  "partitions": 8,
+  "verbose": false
+}
+
+{
   "ml_mode": "train",
 
   "wban_airports_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/wban_airport_timezone.csv",

@@ -29,7 +29,7 @@ class DataLoader(config: Configuration) {
 
     Utility.log("Removing non-weather related delayed records...")
     data = data.filter(s"ARR_DELAY_NEW <= ${config.flightsDelayThreshold} " +
-      s"or  (WEATHER_DELAY + NAS_DELAY >= ${config.flightsDelayThreshold} and ARR_DELAY_NEW > ${config.flightsDelayThreshold})")
+      s"or  (WEATHER_DELAY + NAS_DELAY >= ${config.flightsDelayThreshold})")
     val x = data.select("FL_ID", "ARR_DELAY_NEW", "WEATHER_DELAY", "NAS_DELAY")
     Utility.show(x.filter("WEATHER_DELAY > 0").limit(10).union(x.filter("NAS_DELAY > 0").limit(10)))
     Utility.log(s"number of flights: ${data.count()}")
@@ -41,7 +41,7 @@ class DataLoader(config: Configuration) {
     Utility.show(y.select("FL_ONTIME").groupBy("FL_ONTIME").count())
     data = data.drop("WEATHER_DELAY", "NAS_DELAY")
 
-    data = balanceDataset(data)
+    //data = balanceDataset(data)
 
     data
   }
@@ -80,8 +80,8 @@ class DataLoader(config: Configuration) {
     data = data.groupBy("FL_ID")
       .agg(first($"FL_DEP_TIME").as("FL_DEP_TIME"),
         first($"FL_ARR_TIME").as("FL_ARR_TIME"),
-        first($"FL_ONTIME").as("FL_ONTIME")
-        , collect_list($"dep.WEATHER_TIME").as("ORIGIN_WEATHER_TIME"),
+        first($"FL_ONTIME").as("FL_ONTIME"),
+        collect_list($"dep.WEATHER_TIME").as("ORIGIN_WEATHER_TIME"),
         collect_list($"dep.WEATHER_COND").as("ORIGIN_WEATHER_COND"),
         collect_list($"arr.WEATHER_TIME").as("DEST_WEATHER_TIME"),
         collect_list($"arr.WEATHER_COND").as("DEST_WEATHER_COND")
@@ -100,7 +100,7 @@ class DataLoader(config: Configuration) {
     //Utility.log(s"data after filling: ${Utility.count(data)}")
     Utility.show(data, truncate = true)
 
-    val outputPath = config.persistPath + "data.train.parquet"
+    val outputPath = config.persistPath + "data.train"
     Utility.log(s"saving train dataset into $outputPath")
     data.repartition(config.partitions, col("FL_ONTIME"))
       .write.mode(SaveMode.Overwrite)
@@ -112,30 +112,11 @@ class DataLoader(config: Configuration) {
     Utility.log("balancing...")
     val ontimeCount = Utility.sparkSession.read.parquet(outputPath + "/FL_ONTIME=1.0").count().toDouble
     val delayedCount = Utility.sparkSession.read.parquet(outputPath + "/FL_ONTIME=0.0").count()
-    val fractions = Map(0.0 -> 1.0, 1.0 -> delayedCount / ontimeCount)
+    Utility.log(s"ontime=$ontimeCount, delayed=$delayedCount")
+    val fractions = if (ontimeCount >= delayedCount) Map(0.0 -> 1.0, 1.0 -> delayedCount / ontimeCount) else Map(0.0 -> ontimeCount / delayedCount, 1.0 -> 1.0)
     data = data.stat.sampleBy("FL_ONTIME", fractions, 42L)
     Utility.log("balanced")
 
     data
-  }
-
-  def balanceDataset(data: DataFrame): DataFrame = {
-    Utility.log(s"balancing the dataset...")
-    Utility.log(s"repartitioning the dataset...")
-    var balancedData = data.select("Fl_ID", "FL_ONTIME")
-
-    Utility.log(s"counting delayed and on-time flights (before balancing)...")
-    val dfCount = balancedData.groupBy("FL_ONTIME").count().collect()
-    val a = Array(dfCount(0).getLong(1).toDouble, dfCount(1).getLong(1).toDouble)
-    Utility.log(s"sampling delayed=${a.min}, ontime=${a.max}...")
-    //balancing map (we take the number of delayed flights as on-time ones)
-    val fractions = Map(0.0 -> 1.0, 1.0 -> a.min / a.max)
-    balancedData = balancedData.stat.sampleBy("FL_ONTIME", fractions, 42L)
-    Utility.log("(after balancing)")
-    Utility.show(balancedData.groupBy("FL_ONTIME").count())
-    Utility.log("joining...")
-    balancedData = data.join(balancedData, Array("FL_ID", "FL_ONTIME"), "inner")
-    Utility.log(s"balanced")
-    balancedData
   }
 }

@@ -59,12 +59,16 @@ object Utility {
   }
 
   def show(data: DataFrame, truncate: Boolean = false): Unit = {
-    if (!config.verbose)
+    if (config.verbose)
       data.show(truncate = truncate)
   }
 
   def count(data: DataFrame): String = {
-    if (!config.verbose) data.count().toString else "---"
+    if (config.verbose) data.count().toString else "---"
+  }
+
+  def exit() = {
+    scala.sys.exit(0)
   }
 }
 
@@ -89,8 +93,8 @@ object UdfUtility extends Serializable {
   }
 
   val fillWeatherDataUdf: UserDefinedFunction = udf((originTime: Long, depTimes: Seq[Long], depWeatherConds: Seq[Vector],
-                                                      destTime: Long, arrTimes: Seq[Long], arrWeatherConds: Seq[Vector],
-                                                      frame: Int, step: Int) => {
+                                                     destTime: Long, arrTimes: Seq[Long], arrWeatherConds: Seq[Vector],
+                                                     frame: Int, step: Int) => {
     var res: Seq[Double] = null
     val depData = fillMissingData(originTime, depTimes, depWeatherConds, frame, step)
     if (depData != null) {
@@ -106,51 +110,18 @@ object UdfUtility extends Serializable {
   // SKC0200 SCT03011 BKN0400
   // 1 3 4
   val parseSkyConditionUdf: UserDefinedFunction = udf((skyCond: String, index: Int) => {
-    val skyConds = skyCond.trim.split(" ")
-    if (skyConds.isEmpty) 0.0
+    if (skyCond.isEmpty) -1
     else {
+      val skyConds = skyCond.trim.split(" ")
       val x = skyConds(Math.min(index, skyConds.length - 1))
-      if (x.length >= 3) {
-        skys.indexOf(x.substring(0, 3)) + 1.0
-      }
-      else 0.0
+      if (x.length >= 3)
+        skys.indexOf(x.substring(0, 3))
+      else -1
     }
   })
 
   val parseWeatherTypeUdf: UserDefinedFunction = udf((weatherType: String) => {
     weatherType.trim.replace("+", "").replace("-", "").replace(" ", "").length / 2
-  })
-
-  val parseWindDirectionUdf: UserDefinedFunction = udf((windDirection: String) => {
-    if (windDirection.equalsIgnoreCase("0"))
-      8
-    else if (windDirection.equalsIgnoreCase("M"))
-      9
-    else if (windDirection.equalsIgnoreCase("VR"))
-      10
-    else {
-      try {
-        (windDirection.toDouble / 45).toInt
-      } catch {
-        case _: Exception => 0
-      }
-    }
-  })
-
-  val parseNumericalVariableUdf: UserDefinedFunction = udf((str: String) => {
-    try {
-      str.toDouble
-    } catch {
-      case _: Exception => -1
-    }
-  })
-
-  val parseTemperatureUdf: UserDefinedFunction = udf((str: String) => {
-    if (str == "M") 20.0 else str.toDouble
-  })
-
-  val parseVisibilityUdf: UserDefinedFunction = udf((str: String) => {
-    if (str == "M") -1 else if (str.toDouble >= 10) 10 else str.toDouble
   })
 
   val computeLineUdf: UserDefinedFunction = udf((airport1: String, airport2: String) => {

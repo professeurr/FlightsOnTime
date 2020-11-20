@@ -77,3 +77,22 @@
         OnTime Precision : 72%
 20/11/19 02:49:42 INFO $: [END: 145 s]
 
+1 mois / 15'
+2020-11-20 11:13:57,555 INFO $: Performance of the model RandomForest on training data...
+2020-11-20 11:13:58,545 INFO $: RandomForest metrics
+        Accuracy         : 99%
+        Area Under ROC   : 99%
+        Delayed Recall   : 99%
+        Delayed Precision: 98%
+        OnTime Recall    : 98%
+        OnTime Precision : 99%
+2020-11-20 11:13:58,545 INFO $: Evaluating the model RandomForest on test data...
+2020-11-20 11:13:59,463 INFO $: Performance of the model RandomForest on test data...
+2020-11-20 11:14:00,214 INFO $: RandomForest metrics
+        Accuracy         : 68%
+        Area Under ROC   : 68%
+        Delayed Recall   : 73%
+        Delayed Precision: 66%
+        OnTime Recall    : 63%
+        OnTime Precision : 70%
+2020-11-20 11:14:00,343 INFO $: [END: 210 s]
