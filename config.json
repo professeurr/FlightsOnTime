@@ -9,10 +9,10 @@
     "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/flights/full/*"
   ],
   "flights_train_path": [
-    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/persist/data.flights/year=2013/month=1"
+    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/persist/data.flights/year=2013/month=01"
   ],
   "weather_train_path": [
-    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/persist/data.weather/year=2013/month=1"
+    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/persist/data.weather/year=2013/month=01"
   ],
   "persist_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/persist/",
   "flights_delay_threshold": 15,
