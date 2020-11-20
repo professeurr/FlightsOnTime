@@ -43,9 +43,8 @@ class DataFeaturing(config: Configuration) {
     Utility.show(data)
 
     Utility.log("computing flights identifier (FL_ID)...")
-    data = data
-      .withColumn("FL_ID", concat_ws("_", $"ORIGIN_AIRPORT_ID", $"DEST_AIRPORT_ID",
-        $"FL_DATE", $"OP_CARRIER_AIRLINE_ID", $"OP_CARRIER_FL_NUM"))
+    data = data.withColumn("FL_ID", concat_ws("_", $"ORIGIN_AIRPORT_ID", $"DEST_AIRPORT_ID",
+      $"FL_DATE", $"OP_CARRIER_AIRLINE_ID", $"OP_CARRIER_FL_NUM"))
     Utility.show(data.select("FL_ID", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_DATE", "OP_CARRIER_AIRLINE_ID", "OP_CARRIER_FL_NUM"))
 
     Utility.log("some delays flights...")
@@ -89,6 +88,9 @@ class DataFeaturing(config: Configuration) {
       .withColumn("FL_ARR_TIME", ($"FL_DEP_TIME" + $"CRS_ELAPSED_TIME" * 60).cast(LongType))
       .withColumn("year", substring($"FL_DATE", 0, 4))
       .withColumn("month", substring($"FL_DATE", 6, 2))
+
+    // remove unnecessary columns
+    data = data.drop("CRS_ELAPSED_TIME", "CRS_DEP_TIME", "FL_DATE", "STATION_WBAN", "TimeZone")
 
     val outputPath = config.persistPath + "data.flights"
     Utility.log(s"saving flights dataset into $outputPath")
@@ -181,7 +183,7 @@ class DataFeaturing(config: Configuration) {
       .setOutputCols(categoricalVariables.map(c => c + "Vect"))
     // creating vector assembler transformer to group the weather conditions features to one column
     val vectorAssembler = new VectorAssembler()
-      .setInputCols(categoricalVariables.map(c => c + "Vect")++continuousVariables)
+      .setInputCols(categoricalVariables.map(c => c + "Vect") ++ continuousVariables)
       .setOutputCol("WEATHER_COND")
     // the transformation pipeline that transforms categorial variables and assembles all variable into feature column
     val pipeline = new Pipeline().setStages(Array(oneHotEncoder, vectorAssembler))

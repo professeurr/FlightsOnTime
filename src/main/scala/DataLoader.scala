@@ -36,13 +36,11 @@ class DataLoader(config: Configuration) {
     Utility.log(s"number of flights: ${data.count()}")
 
     Utility.log("computing FL_ONTIME flag (1=on-time; 0=delayed)")
-    data = data.withColumn("FL_ONTIME", ($"ARR_DELAY_NEW" <= config.flightsDelayThreshold).cast(DoubleType))
+    data = data.withColumn("FL_ONTIME", when($"ARR_DELAY_NEW" <= config.flightsDelayThreshold, 1.0).otherwise(0.0))
     val y = data.select("FL_ID", "FL_ONTIME", "ARR_DELAY_NEW", "WEATHER_DELAY", "NAS_DELAY")
     Utility.show(y.filter("FL_ONTIME = 0").limit(10).union(y.filter("FL_ONTIME = 1").limit(10)))
     Utility.show(y.select("FL_ONTIME").groupBy("FL_ONTIME").count())
     data = data.drop("WEATHER_DELAY", "NAS_DELAY")
-
-    //data = balanceDataset(data)
 
     data
   }

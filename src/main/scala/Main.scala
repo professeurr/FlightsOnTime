@@ -24,7 +24,7 @@ object Main {
         val airportWbanData = broadcast(dataLoader.loadStationsData())
         new DataFeaturing(config)
           .preloadFlights(airportWbanData)
-          .preloadWeather(airportWbanData)
+          //.preloadWeather(airportWbanData)
       }
       else if (config.mlMode.contains("train")) {
         val flightData = dataLoader.loadFlightData().cache()
