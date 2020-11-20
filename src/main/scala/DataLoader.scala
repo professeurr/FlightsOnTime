@@ -23,9 +23,9 @@ class DataLoader(config: Configuration) {
   }
 
   def loadFlightData(): DataFrame = {
-    val s = config.flightsPath.mkString(",")
+    val s = config.flightsTrainPath.mkString(",")
     Utility.log(s"Loading flights records from $s")
-    var data = Utility.sparkSession.read.parquet(config.flightsPath: _*)
+    var data = Utility.sparkSession.read.parquet(config.flightsTrainPath: _*)
 
     Utility.log("Removing non-weather related delayed records...")
     data = data.filter(s"ARR_DELAY_NEW <= ${config.flightsDelayThreshold} " +
@@ -48,8 +48,8 @@ class DataLoader(config: Configuration) {
   }
 
   def loadWeatherData(): DataFrame = {
-    Utility.log(s"Loading weather records from ${config.weatherPath.mkString(",")}")
-    var data = Utility.sparkSession.read.parquet(config.weatherPath: _*)
+    Utility.log(s"Loading weather records from ${config.weatherTrainPath.mkString(",")}")
+    var data = Utility.sparkSession.read.parquet(config.weatherTrainPath: _*)
     Utility.log(s"weather initial number of records: ${Utility.count(data)};")
     Utility.show(data)
 
@@ -64,18 +64,13 @@ class DataLoader(config: Configuration) {
     Utility.log("joining flights data with weather data")
 
     Utility.log("joining dep...")
-    val depData = flightData.select("FL_ID", "FL_DEP_TIME", "ORIGIN_AIRPORT_ID", "FL_ONTIME")
+    var data = flightData
       .join(weatherData.as("dep"), $"ORIGIN_AIRPORT_ID" === $"dep.AIRPORTID", "inner")
       .where(s"dep.WEATHER_TIME >= FL_DEP_TIME - $tf and dep.WEATHER_TIME <= FL_DEP_TIME ")
       .drop("dep.AIRPORTID", "ORIGIN_AIRPORT_ID")
-
-    Utility.log("repartitioning arr...")
-    val arrData = flightData.select("FL_ID", "FL_ARR_TIME", "DEST_AIRPORT_ID", "FL_ONTIME")
       .join(weatherData.as("arr"), $"DEST_AIRPORT_ID" === $"arr.AIRPORTID", "inner")
       .where(s"arr.WEATHER_TIME >= FL_ARR_TIME - $tf and arr.WEATHER_TIME <= FL_ARR_TIME ")
-      .drop("arr.AIRPORTID", "ORIGIN_AIRPORT_ID", "FL_ONTIME")
-
-    var data = depData.join(arrData, Array("FL_ID"), "inner")
+      .drop("arr.AIRPORTID", "DEST_AIRPORT_ID")
 
     Utility.log("collecting conditions...")
     data = data.groupBy("FL_ID")
@@ -116,13 +111,6 @@ class DataLoader(config: Configuration) {
     Utility.log(s"ontime=$ontimeCount, delayed=$delayedCount")
     val fractions = if (ontimeCount >= delayedCount) Map(0.0 -> 1.0, 1.0 -> delayedCount / ontimeCount) else Map(0.0 -> ontimeCount / delayedCount, 1.0 -> 1.0)
     data = data.stat.sampleBy("FL_ONTIME", fractions, 42L)
-    Utility.log(s"saving balanced dataset into $outputPath")
-    data.repartition(config.partitions, col("FL_ONTIME"))
-      .write.mode(SaveMode.Overwrite)
-      .partitionBy("FL_ONTIME")
-      .parquet(outputPath)
-    Utility.log(s"reading persisted train dataset from $outputPath")
-    data = Utility.sparkSession.read.parquet(outputPath)
     Utility.log("balanced")
 
     data

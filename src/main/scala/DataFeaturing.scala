@@ -1,6 +1,6 @@
 import UdfUtility._
+import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.{OneHotEncoder, VectorAssembler}
-import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{when, _}
 import org.apache.spark.sql.types._
@@ -26,13 +26,13 @@ class DataFeaturing(config: Configuration) {
   }
 
   def preloadFlights(mappingData: DataFrame): DataFeaturing = {
-    val s = config.flightsPath.mkString(",")
+    val s = config.flightsDataPath.mkString(",")
     Utility.log(s"Loading flights records from $s")
     val delayColumns = Array("ARR_DELAY_NEW", "WEATHER_DELAY", "NAS_DELAY", "CANCELLED", "DIVERTED")
     var data = Utility.sparkSession.read
       .option("header", "true")
       .option("inferSchema", "false")
-      .csv(config.flightsPath: _*)
+      .csv(config.flightsDataPath: _*)
 
     // remove empty columns
     val cols = data.columns.toSet.toList.filter(c => !c.trim.startsWith("_c"))
@@ -102,12 +102,12 @@ class DataFeaturing(config: Configuration) {
 
   def preloadWeather(mappingData: DataFrame): DataFeaturing = {
 
-    Utility.log(s"Loading weather records from ${config.weatherPath.mkString(",")}")
+    Utility.log(s"Loading weather records from ${config.weatherDataPath.mkString(",")}")
     val weatherCondColumns = Array("SkyCondition", "DryBulbCelsius", "WeatherType", "StationPressure", "WindDirection", "Visibility", "RelativeHumidity", "WindSpeed")
     var data = Utility.sparkSession.read
       .option("header", "true")
       .option("inferSchema", "false")
-      .csv(config.weatherPath: _*)
+      .csv(config.weatherDataPath: _*)
       .select(Array(col("WBAN"), col("Date"), col("Time")) ++ weatherCondColumns.map(c => col(c)): _*)
     Utility.log(s"weather initial number of records: ${Utility.count(data)};")
     Utility.show(data)
@@ -145,7 +145,7 @@ class DataFeaturing(config: Configuration) {
         .when($"WindDirection" === "0", 8)
         .when($"WindDirection".cast(IntegerType).isNull, null)
         .otherwise(($"WindDirection".cast(IntegerType) / 45).cast(IntegerType)))
-    data.show(50, truncate = false)
+    Utility.show(data)
 
     Utility.log("applying forward/backward-fill on weather conditions data...")
     val columns = Array("SkyConditionLowCategory", "SkyConditionMediumCategory", "SkyConditionHighCategory",
@@ -158,6 +158,9 @@ class DataFeaturing(config: Configuration) {
         .withColumn(c, last(col(c), ignoreNulls = true).over(w1))
     )
 
+    Utility.log("removing na...")
+    data = data.na.drop().cache()
+
     Utility.log("scaling continuous variables...")
     data = data.withColumn("DryBulbCelsius", when($"DryBulbCelsius" <= -8, 0)
       .when($"DryBulbCelsius" <= -3, 1).when($"DryBulbCelsius" <= 0, 2)
@@ -166,11 +169,9 @@ class DataFeaturing(config: Configuration) {
       .withColumn("Visibility", (greatest(least($"Visibility", lit(10)), lit(0)) / 2.6).cast(IntegerType)) // TODO: enhance the intervals
       .withColumn("RelativeHumidity", ($"RelativeHumidity" / 26).cast(IntegerType))
       .withColumn("WindSeep", when($"WindSpeed" <= 9, 0).when($"WindSpeed" <= 15, 1).when($"WindSpeed" <= 24, 2).otherwise(3))
-
-    data.show(50, truncate = false)
+    Utility.show(data)
     //Utility.exit()
 
-    var pipelineModel: PipelineModel = null
     Utility.log("assembling weather conditions")
     val pipelinePath = s"${config.persistPath}pipeline.weather"
     // apply one-hot encoding of columns of the features
@@ -185,7 +186,7 @@ class DataFeaturing(config: Configuration) {
     // the transformation pipeline that transforms categorial variables and assembles all variable into feature column
     val pipeline = new Pipeline().setStages(Array(oneHotEncoder, vectorAssembler))
     Utility.log("fitting features (one-hot encoding + vector assembler)...")
-    pipelineModel = pipeline.fit(data)
+    val pipelineModel = pipeline.fit(data)
     Utility.log(s"saving weather trained pipeline to a file '$pipelinePath'...")
     pipelineModel.write.overwrite.save(pipelinePath)
 

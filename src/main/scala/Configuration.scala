@@ -1,8 +1,10 @@
 case class Configuration(
                           verbose: Boolean,
                           wbanAirportsPath: String,
-                          flightsPath: Array[String],
-                          weatherPath: Array[String],
+                          flightsDataPath: Array[String],
+                          weatherDataPath: Array[String],
+                          flightsTrainPath: Array[String],
+                          weatherTrainPath: Array[String],
                           persistPath: String,
                           mlMode: String,
                           flightsDelayThreshold: Int,
