@@ -1,4 +1,4 @@
-import UdfUtility.fillWeatherDataUdf
+import UdfUtility.{assembleVectors, fillWeatherDataUdf}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, SaveMode}
@@ -61,37 +61,31 @@ class DataLoader(config: Configuration) {
     val tf: Int = 3600 * config.weatherTimeFrame
     Utility.log("joining flights data with weather data")
 
-    Utility.log("joining dep...")
-    var data = flightData
-      .join(weatherData.as("dep"), $"ORIGIN_AIRPORT_ID" === $"dep.AIRPORTID", "inner")
-      .where(s"dep.WEATHER_TIME >= FL_DEP_TIME - $tf and dep.WEATHER_TIME <= FL_DEP_TIME ")
-      .drop("dep.AIRPORTID", "ORIGIN_AIRPORT_ID")
-      .join(weatherData.as("arr"), $"DEST_AIRPORT_ID" === $"arr.AIRPORTID", "inner")
-      .where(s"arr.WEATHER_TIME >= FL_ARR_TIME - $tf and arr.WEATHER_TIME <= FL_ARR_TIME ")
-      .drop("arr.AIRPORTID", "DEST_AIRPORT_ID")
+    Utility.log("joining departure and arrival flights with eather conditions...")
+    var depDta = flightData.join(weatherData, $"ORIGIN_AIRPORT_ID" === $"AIRPORTID", "inner")
+      .where(s"WEATHER_TIME >= FL_DEP_TIME - $tf and WEATHER_TIME <= FL_DEP_TIME ")
+      .drop("AIRPORTID", "ORIGIN_AIRPORT_ID", "FL_ARR_TIME", "FL_ONTIME")
+    depDta = depDta.groupBy("FL_ID", "FL_DEP_TIME")
+      .agg(fillWeatherDataUdf($"FL_DEP_TIME", collect_list("WEATHER_TIME"), collect_list("WEATHER_COND"),
+        lit(config.weatherTimeFrame), lit(config.weatherTimeStep)).as("ORIGIN_WEATHER_COND"))
+      .drop("WEATHER_COND", "WEATHER_TIME", "FL_DEP_TIME")
+      .filter("ORIGIN_WEATHER_COND is not null")
 
-    Utility.log("collecting conditions...")
-    data = data.groupBy("FL_ID")
-      .agg(first($"FL_DEP_TIME").as("FL_DEP_TIME"),
-        first($"FL_ARR_TIME").as("FL_ARR_TIME"),
-        first($"FL_ONTIME").as("FL_ONTIME"),
-        collect_list($"dep.WEATHER_TIME").as("ORIGIN_WEATHER_TIME"),
-        collect_list($"dep.WEATHER_COND").as("ORIGIN_WEATHER_COND"),
-        collect_list($"arr.WEATHER_TIME").as("DEST_WEATHER_TIME"),
-        collect_list($"arr.WEATHER_COND").as("DEST_WEATHER_COND")
-      )
+    var arrData = flightData.join(weatherData, $"DEST_AIRPORT_ID" === $"AIRPORTID", "inner")
+      .where(s"WEATHER_TIME >= FL_ARR_TIME - $tf and WEATHER_TIME <= FL_ARR_TIME ")
+      .drop("AIRPORTID", "DEST_AIRPORT_ID", "FL_DEP_TIME")
+    arrData = arrData.groupBy("FL_ID", "FL_ARR_TIME")
+      .agg(first("FL_ONTIME").as("FL_ONTIME"),
+        fillWeatherDataUdf($"FL_ARR_TIME", collect_list("WEATHER_TIME"), collect_list("WEATHER_COND"),
+          lit(config.weatherTimeFrame), lit(config.weatherTimeStep)).as("DEST_WEATHER_COND"))
+      .drop("WEATHER_COND", "WEATHER_TIME", "FL_ARR_TIME")
+      .filter("DEST_WEATHER_COND is not null")
 
-    Utility.log("filling missing weather records for each flight ...")
-    data = data.withColumn("WEATHER_COND",
-      fillWeatherDataUdf(
-        $"FL_DEP_TIME", $"ORIGIN_WEATHER_TIME", $"ORIGIN_WEATHER_COND",
-        $"FL_ARR_TIME", $"DEST_WEATHER_TIME", $"DEST_WEATHER_COND",
-        lit(config.weatherTimeFrame), lit(config.weatherTimeStep)
-      ))
-      .drop("FL_DEP_TIME", "ORIGIN_WEATHER_TIME", "ORIGIN_WEATHER_COND",
-        "FL_ARR_TIME", "DEST_WEATHER_TIME", "DEST_WEATHER_COND")
-      .filter("WEATHER_COND is not null")
-    //Utility.log(s"data after filling: ${Utility.count(data)}")
+    Utility.log("assembling departure and destination flights...")
+    var data = depDta.join(arrData, Array("FL_ID"), "inner")
+      .withColumn("WEATHER_COND", assembleVectors($"ORIGIN_WEATHER_COND", $"DEST_WEATHER_COND"))
+      .drop("ORIGIN_WEATHER_COND", "DEST_WEATHER_COND")
+
     Utility.show(data, truncate = true)
 
     val outputPath = config.persistPath + "data.train"
@@ -109,6 +103,11 @@ class DataLoader(config: Configuration) {
     Utility.log(s"ontime=$ontimeCount, delayed=$delayedCount")
     val fractions = if (ontimeCount >= delayedCount) Map(0.0 -> 1.0, 1.0 -> delayedCount / ontimeCount) else Map(0.0 -> ontimeCount / delayedCount, 1.0 -> 1.0)
     data = data.stat.sampleBy("FL_ONTIME", fractions, 42L)
+    data.repartition(config.partitions, col("FL_ONTIME"))
+      .write.mode(SaveMode.Overwrite)
+      .partitionBy("FL_ONTIME")
+      .parquet(outputPath + "2")
+    data = Utility.sparkSession.read.parquet(outputPath + "2")
     Utility.log("balanced")
 
     data

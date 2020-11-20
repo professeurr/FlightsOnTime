@@ -28,7 +28,7 @@ class DataFeaturing(config: Configuration) {
   def preloadFlights(mappingData: DataFrame): DataFeaturing = {
     val s = config.flightsDataPath.mkString(",")
     Utility.log(s"Loading flights records from $s")
-    val delayColumns = Array("ARR_DELAY_NEW", "WEATHER_DELAY", "NAS_DELAY", "CANCELLED", "DIVERTED")
+    val numericalColumns = Array("ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "ARR_DELAY_NEW", "WEATHER_DELAY", "NAS_DELAY", "CANCELLED", "DIVERTED")
     var data = Utility.sparkSession.read
       .option("header", "true")
       .option("inferSchema", "false")
@@ -38,8 +38,8 @@ class DataFeaturing(config: Configuration) {
     val cols = data.columns.toSet.toList.filter(c => !c.trim.startsWith("_c"))
     data = data.select(cols.map(c => col(c)): _*)
     // convert delay related columns to numerical type
-    delayColumns.foreach(c => data = data.withColumn(c, col(c).cast(DoubleType)))
-    data = data.na.fill(0.0, delayColumns)
+    numericalColumns.foreach(c => data = data.withColumn(c, col(c).cast(DoubleType)))
+    data = data.na.fill(0.0, numericalColumns)
     Utility.show(data)
 
     Utility.log("computing flights identifier (FL_ID)...")
@@ -116,7 +116,7 @@ class DataFeaturing(config: Configuration) {
 
     Utility.log("getting timezones of each station and converting weather record time to utc...")
     data = data.join(mappingData, $"STATION_WBAN" === $"WBAN", "inner")
-      .withColumnRenamed("AirportId", "AIRPORTID")
+      .withColumn("AirportId", $"AIRPORTID".cast(DoubleType))
       .withColumn("WEATHER_TIME", unix_timestamp(concat_ws("", $"Date", $"Time"), "yyyyMMddHHmm").minus($"TimeZone"))
       .withColumn("year", substring($"Date", 0, 4))
       .withColumn("month", substring($"Date", 5, 2))

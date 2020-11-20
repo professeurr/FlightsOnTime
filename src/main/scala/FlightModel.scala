@@ -74,9 +74,9 @@ class FlightDelayCrossValidation(configuration: Configuration) extends FlightMod
       //      .addGrid(dt.maxDepth, Array(3, 5, 7))
       //      .addGrid(dt.maxBins, Array(5, 10, 20))
       //      .addGrid(dt.impurity, Array("gini", "entropy"))
-      .addGrid(rf.maxDepth, Array(3, 5, 10))
-      .addGrid(rf.numTrees, Array(5, 10))
-      .addGrid(rf.maxBins, Array(5, 10))
+      .addGrid(rf.maxDepth, Array(10, 15, 20))
+      .addGrid(rf.numTrees, Array(5, 10, 20))
+      .addGrid(rf.maxBins, Array(3, 5, 9))
       .addGrid(rf.impurity, Array("gini", "entropy"))
       .build()
 
@@ -93,7 +93,7 @@ class FlightDelayCrossValidation(configuration: Configuration) extends FlightMod
       .setEvaluator(evaluator)
       .setEstimatorParamMaps(paramGrid)
       .setNumFolds(3)
-      .setParallelism(3)
+      .setParallelism(configuration.partitions)
 
     // run the cross-validation engine
     val cvModel = cv.fit(trainingData)

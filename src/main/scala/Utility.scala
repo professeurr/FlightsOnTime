@@ -92,9 +92,17 @@ object UdfUtility extends Serializable {
     if (cds.isEmpty) null else cds
   }
 
-  val fillWeatherDataUdf: UserDefinedFunction = udf((originTime: Long, depTimes: Seq[Long], depWeatherConds: Seq[Vector],
-                                                     destTime: Long, arrTimes: Seq[Long], arrWeatherConds: Seq[Vector],
-                                                     frame: Int, step: Int) => {
+  val fillWeatherDataUdf: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int) => {
+    fillMissingData(originTime, times, weatherConds, frame, step)
+  })
+
+  val assembleVectors: UserDefinedFunction = udf((cond1: Seq[Double], cond2: Seq[Double]) => {
+    Vectors.dense((cond1 ++ cond2).toArray)
+  })
+
+  val fillWeatherDataUdf2: UserDefinedFunction = udf((originTime: Long, depTimes: Seq[Long], depWeatherConds: Seq[Vector],
+                                                      destTime: Long, arrTimes: Seq[Long], arrWeatherConds: Seq[Vector],
+                                                      frame: Int, step: Int) => {
     var res: Seq[Double] = null
     val depData = fillMissingData(originTime, depTimes, depWeatherConds, frame, step)
     if (depData != null) {

@@ -16,7 +16,10 @@ object Main {
 
       val dataLoader = new DataLoader(config)
       // we define here the set of models we want to train or test (in production mode)
-      val models = List[FlightModel](new FlightDelayRandomForest(config)) //(new FlightDelayCrossValidation, new FlightDelayDecisionTree(), new FlightDelayRandomForest() /*, new FlightWeatherLogisticRegression()*/)
+      val models = List[FlightModel](
+        new FlightDelayRandomForest(config)
+        //, new FlightDelayCrossValidation(config)
+      ) //(new FlightDelayCrossValidation, new FlightDelayDecisionTree(), new FlightDelayRandomForest() /*, new FlightWeatherLogisticRegression()*/)
 
       if (config.mlMode.contains("data")) {
         Utility.log("[DATA PREPARATION]")
@@ -24,7 +27,7 @@ object Main {
         val airportWbanData = broadcast(dataLoader.loadStationsData())
         new DataFeaturing(config)
           .preloadFlights(airportWbanData)
-          //.preloadWeather(airportWbanData)
+        //.preloadWeather(airportWbanData)
       }
       else if (config.mlMode.contains("train")) {
         val flightData = dataLoader.loadFlightData().cache()
