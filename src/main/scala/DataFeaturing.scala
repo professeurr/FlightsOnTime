@@ -157,9 +157,6 @@ class DataFeaturing(config: Configuration) {
       data.withColumn(c, last(col(c), ignoreNulls = true).over(w0))
         .withColumn(c, last(col(c), ignoreNulls = true).over(w1))
     )
-    Utility.log("removing na...")
-    data = data.na.drop()
-    data.show(50, truncate = false)
 
     Utility.log("scaling continuous variables...")
     data = data.withColumn("DryBulbCelsius", when($"DryBulbCelsius" <= -8, 0)
@@ -195,7 +192,7 @@ class DataFeaturing(config: Configuration) {
     Utility.log("transforming features (one-hot encoding + vector assembler)...")
     data = pipelineModel.transform(data)
 
-    data = data.select("year", "month", "AIRPORTID", "WEATHER_TIME", "WEATHER_COND")
+    data = data.select("year", "month", "AIRPORTID", "WEATHER_TIME", "WEATHER_COND").cache()
     Utility.show(data)
 
     val outputPath = config.persistPath + "data.weather"

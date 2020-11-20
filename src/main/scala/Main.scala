@@ -23,7 +23,7 @@ object Main {
         // broadcast this dataset which is small compare to flights and weather ones. Broadcasting it will significantly speed up the join operations
         val airportWbanData = broadcast(dataLoader.loadStationsData())
         new DataFeaturing(config)
-          //.preloadFlights(airportWbanData)
+          .preloadFlights(airportWbanData)
           .preloadWeather(airportWbanData)
       }
       else if (config.mlMode.contains("train")) {

@@ -3,7 +3,7 @@ spark-submit \
   --deploy-mode client \
   --executor-cores 4 \
   --num-executors 2 \
-  --executor-memory 4G \
+  --executor-memory 6G \
   --files ./config.json \
   --conf spark.sql.autoBroadcastJoinThreshold=-1 \
   --conf spark.sql.shuffle.partitions=7 \

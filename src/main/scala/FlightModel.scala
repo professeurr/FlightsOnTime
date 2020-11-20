@@ -133,9 +133,9 @@ class FlightDelayRandomForest(configuration: Configuration) extends FlightModel(
 
   override def fit(trainingData: DataFrame): FlightModel = {
     val rf = new RandomForestClassifier()
-      .setMaxDepth(30)
       .setMaxBins(5)
-      .setNumTrees(10)
+      .setMaxDepth(40)
+      .setNumTrees(20)
       .setImpurity("gini")
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")

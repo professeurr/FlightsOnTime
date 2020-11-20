@@ -30,6 +30,7 @@ class DataLoader(config: Configuration) {
     Utility.log("Removing non-weather related delayed records...")
     data = data.filter(s"ARR_DELAY_NEW <= ${config.flightsDelayThreshold} " +
       s"or  (WEATHER_DELAY + NAS_DELAY >= ${config.flightsDelayThreshold})")
+
     val x = data.select("FL_ID", "ARR_DELAY_NEW", "WEATHER_DELAY", "NAS_DELAY")
     Utility.show(x.filter("WEATHER_DELAY > 0").limit(10).union(x.filter("NAS_DELAY > 0").limit(10)))
     Utility.log(s"number of flights: ${data.count()}")
@@ -115,6 +116,13 @@ class DataLoader(config: Configuration) {
     Utility.log(s"ontime=$ontimeCount, delayed=$delayedCount")
     val fractions = if (ontimeCount >= delayedCount) Map(0.0 -> 1.0, 1.0 -> delayedCount / ontimeCount) else Map(0.0 -> ontimeCount / delayedCount, 1.0 -> 1.0)
     data = data.stat.sampleBy("FL_ONTIME", fractions, 42L)
+    Utility.log(s"saving balanced dataset into $outputPath")
+    data.repartition(config.partitions, col("FL_ONTIME"))
+      .write.mode(SaveMode.Overwrite)
+      .partitionBy("FL_ONTIME")
+      .parquet(outputPath)
+    Utility.log(s"reading persisted train dataset from $outputPath")
+    data = Utility.sparkSession.read.parquet(outputPath)
     Utility.log("balanced")
 
     data
