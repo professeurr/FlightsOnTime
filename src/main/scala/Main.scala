@@ -29,7 +29,7 @@ object Main {
           .preloadFlights(airportWbanData)
         .preloadWeather(airportWbanData)
       }
-      else if (config.mlMode.contains("train")) {
+      if (config.mlMode.contains("train")) {
         val flightData = dataLoader.loadFlightData().cache()
         Utility.log(s"[flightDataLoad elapsed: ${(System.nanoTime() - t0) / dt} s]")
 

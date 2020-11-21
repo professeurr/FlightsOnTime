@@ -1,12 +1,12 @@
 {
-  "ml_mode": "train",
+  "ml_mode": "data,train",
 
   "wban_airports_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/wban_airport_timezone.csv",
   "flights_data_path": [
-    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/flights/full/*"
+    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/flights/full/2013*"
   ],
   "weather_data_path": [
-    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/flights/full/*"
+    "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/data/weather/full/2013*"
   ],
   "flights_train_path": [
     "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/persist/data.flights/year=2013/month=*"

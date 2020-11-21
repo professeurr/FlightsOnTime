@@ -153,11 +153,11 @@ class DataFeaturing(config: Configuration) {
     val columns = Array("SkyConditionLowCategory", "SkyConditionMediumCategory", "SkyConditionHighCategory",
       "WindDirectionCategory", "DryBulbCelsius", "WeatherTypeCategory",
       "StationPressure", "Visibility", "RelativeHumidity", "WindSpeed")
-    val w0 = Window.partitionBy($"AIRPORTID", $"Date").orderBy($"Time".asc)
-    val w1 = Window.partitionBy($"AIRPORTID", $"Date").orderBy($"Time".desc)
+    val w0 = Window.partitionBy($"AIRPORTID").orderBy($"WEATHER_TIME".asc)
+    val w1 = Window.partitionBy($"AIRPORTID").orderBy($"WEATHER_TIME".desc)
     columns.foreach(c => data =
-      data.withColumn(c, last(col(c), ignoreNulls = true).over(w0))
-        .withColumn(c, last(col(c), ignoreNulls = true).over(w1))
+      data.withColumn(c, last(c, ignoreNulls = true).over(w0))
+        .withColumn(c, last(c, ignoreNulls = true).over(w1))
     )
 
     Utility.log("removing na...")

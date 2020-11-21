@@ -33,7 +33,6 @@ class DataLoader(config: Configuration) {
 
     val x = data.select("FL_ID", "ARR_DELAY_NEW", "WEATHER_DELAY", "NAS_DELAY")
     Utility.show(x.filter("WEATHER_DELAY > 0").limit(10).union(x.filter("NAS_DELAY > 0").limit(10)))
-    Utility.log(s"number of flights: ${data.count()}")
 
     Utility.log("computing FL_ONTIME flag (1=on-time; 0=delayed)")
     data = data.withColumn("FL_ONTIME", when($"ARR_DELAY_NEW" <= config.flightsDelayThreshold, 1.0).otherwise(0.0))
