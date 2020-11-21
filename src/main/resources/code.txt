@@ -1,21 +1,24 @@
 12 mois/15'
-2020-11-19 02:27:03,588 INFO $: RandomForest metrics
-        Accuracy         : 66%
-        Area Under ROC   : 66%
-        Delayed Recall   : 58%
-        Delayed Precision: 67%
-        OnTime Recall    : 73%
-        OnTime Precision : 65%
-2020-11-19 02:27:03,588 INFO $: Evaluating the model RandomForest on test data...
-2020-11-19 02:27:04,379 INFO $: Performance of the model RandomForest on test data...
-2020-11-19 02:27:14,748 INFO $: RandomForest metrics
-        Accuracy         : 66%
-        Area Under ROC   : 66%
-        Delayed Recall   : 58%
-        Delayed Precision: 67%
-        OnTime Recall    : 73%
-        OnTime Precision : 64%
-2020-11-19 02:27:14,809 INFO $: [END: 592 s]
+2020-11-21 23:06:29,355 INFO $: Evaluating the model RandomForest on training data...
+2020-11-21 23:06:32,200 INFO $: Performance of the model RandomForest on training data...
+2020-11-21 23:06:42,337 INFO $: RandomForest metrics
+        Accuracy         : 74%
+        Area Under ROC   : 74%
+        Delayed Recall   : 71%
+        Delayed Precision: 75%
+        OnTime Recall    : 77%
+        OnTime Precision : 72%
+2020-11-21 23:06:42,337 INFO $: Evaluating the model RandomForest on test data...
+2020-11-21 23:06:43,652 INFO $: Performance of the model RandomForest on test data...
+2020-11-21 23:06:59,253 INFO $: RandomForest metrics
+        Accuracy         : 68%
+        Area Under ROC   : 68%
+        Delayed Recall   : 65%
+        Delayed Precision: 69%
+        OnTime Recall    : 71%
+        OnTime Precision : 67%
+2020-11-21 23:06:59,340 INFO $: [END: 1987 s]
+
 
 
 12 mois / 30'
@@ -59,40 +62,24 @@
 
 
 12 mois / 60'
-20/11/19 02:49:39 INFO $: RandomForest metrics
-        Accuracy         : 72%
-        Area Under ROC   : 72%
-        Delayed Recall   : 73%
-        Delayed Precision: 71%
-        OnTime Recall    : 71%
-        OnTime Precision : 72%
-20/11/19 02:49:39 INFO $: Evaluating the model RandomForest on test data...
-20/11/19 02:49:41 INFO $: Performance of the model RandomForest on test data...
-20/11/19 02:49:42 INFO $: RandomForest metrics
-        Accuracy         : 72%
-        Area Under ROC   : 72%
-        Delayed Recall   : 73%
-        Delayed Precision: 71%
-        OnTime Recall    : 71%
-        OnTime Precision : 72%
-20/11/19 02:49:42 INFO $: [END: 145 s]
+20/11/21 22:58:17 INFO $: Evaluating the model RandomForest on training data...
+20/11/21 22:58:20 INFO $: Performance of the model RandomForest on training data...
+20/11/21 22:58:22 INFO $: RandomForest metrics
+        Accuracy         : 86%
+        Area Under ROC   : 86%
+        Delayed Recall   : 87%
+        Delayed Precision: 85%
+        OnTime Recall    : 84%
+        OnTime Precision : 87%
+20/11/21 22:58:22 INFO $: Evaluating the model RandomForest on test data...
+20/11/21 22:58:24 INFO $: Performance of the model RandomForest on test data...
+20/11/21 22:58:26 INFO $: RandomForest metrics
+        Accuracy         : 75%
+        Area Under ROC   : 75%
+        Delayed Recall   : 77%
+        Delayed Precision: 75%
+        OnTime Recall    : 74%
+        OnTime Precision : 76%
+20/11/21 22:58:26 INFO $: [END: 879 s]
 
-1 mois / 15'
-2020-11-20 11:13:57,555 INFO $: Performance of the model RandomForest on training data...
-2020-11-20 11:13:58,545 INFO $: RandomForest metrics
-        Accuracy         : 99%
-        Area Under ROC   : 99%
-        Delayed Recall   : 99%
-        Delayed Precision: 98%
-        OnTime Recall    : 98%
-        OnTime Precision : 99%
-2020-11-20 11:13:58,545 INFO $: Evaluating the model RandomForest on test data...
-2020-11-20 11:13:59,463 INFO $: Performance of the model RandomForest on test data...
-2020-11-20 11:14:00,214 INFO $: RandomForest metrics
-        Accuracy         : 68%
-        Area Under ROC   : 68%
-        Delayed Recall   : 73%
-        Delayed Precision: 66%
-        OnTime Recall    : 63%
-        OnTime Precision : 70%
-2020-11-20 11:14:00,343 INFO $: [END: 210 s]
+

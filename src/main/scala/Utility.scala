@@ -54,7 +54,7 @@ object Utility {
       sparkSession.close()
   }
 
-  def log(s: Any) = {
+  def log(s: Any): Unit = {
     logger.info(s)
   }
 
@@ -67,8 +67,16 @@ object Utility {
     if (config.verbose) data.count().toString else "---"
   }
 
-  def exit() = {
+  def exit(): Unit = {
     scala.sys.exit(0)
+  }
+
+  def time[R](msg: String, block: => R): R = {
+    val t0 = System.currentTimeMillis()
+    val result = block // call-by-name
+    val t1 = System.currentTimeMillis()
+    println(s"$msg elapsed time: ${(t1 - t0) / 1000} s")
+    result
   }
 }
 

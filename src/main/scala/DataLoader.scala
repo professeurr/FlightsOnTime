@@ -61,19 +61,19 @@ class DataLoader(config: Configuration) {
     Utility.log("joining flights data with weather data")
 
     Utility.log("joining departure and arrival flights with eather conditions...")
-    var depDta = flightData.join(weatherData, $"ORIGIN_AIRPORT_ID" === $"AIRPORTID", "inner")
+    val depDta = flightData.join(weatherData, $"ORIGIN_AIRPORT_ID" === $"AIRPORTID", "inner")
       .where(s"WEATHER_TIME >= FL_DEP_TIME - $tf and WEATHER_TIME <= FL_DEP_TIME ")
       .drop("AIRPORTID", "ORIGIN_AIRPORT_ID", "FL_ARR_TIME", "FL_ONTIME")
-    depDta = depDta.groupBy("FL_ID", "FL_DEP_TIME")
+      .groupBy("FL_ID", "FL_DEP_TIME")
       .agg(fillWeatherDataUdf($"FL_DEP_TIME", collect_list("WEATHER_TIME"), collect_list("WEATHER_COND"),
         lit(config.weatherTimeFrame), lit(config.weatherTimeStep)).as("ORIGIN_WEATHER_COND"))
       .drop("WEATHER_COND", "WEATHER_TIME", "FL_DEP_TIME")
       .filter("ORIGIN_WEATHER_COND is not null")
 
-    var arrData = flightData.join(weatherData, $"DEST_AIRPORT_ID" === $"AIRPORTID", "inner")
+    val arrData = flightData.join(weatherData, $"DEST_AIRPORT_ID" === $"AIRPORTID", "inner")
       .where(s"WEATHER_TIME >= FL_ARR_TIME - $tf and WEATHER_TIME <= FL_ARR_TIME ")
       .drop("AIRPORTID", "DEST_AIRPORT_ID", "FL_DEP_TIME")
-    arrData = arrData.groupBy("FL_ID", "FL_ARR_TIME")
+      .groupBy("FL_ID", "FL_ARR_TIME")
       .agg(first("FL_ONTIME").as("FL_ONTIME"),
         fillWeatherDataUdf($"FL_ARR_TIME", collect_list("WEATHER_TIME"), collect_list("WEATHER_COND"),
           lit(config.weatherTimeFrame), lit(config.weatherTimeStep)).as("DEST_WEATHER_COND"))
