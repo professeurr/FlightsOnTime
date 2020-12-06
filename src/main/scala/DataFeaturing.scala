@@ -1,7 +1,6 @@
 import UdfUtility._
-import org.apache.spark.ml.Pipeline
-import org.apache.spark.ml.feature.{OneHotEncoder, VectorAssembler}
-import org.apache.spark.sql.expressions.Window
+import org.apache.spark.ml.feature._
+import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage}
 import org.apache.spark.sql.functions.{when, _}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, SaveMode}
@@ -10,11 +9,12 @@ class DataFeaturing(config: Configuration) {
 
   import Utility.sparkSession.implicits._
 
-  def loadStationsData(): DataFrame = {
+  def extractStationsFeatures(): DataFrame = {
     val schema: StructType = StructType(Array(
       StructField("AirportID", StringType, nullable = true),
       StructField("WBAN", StringType, nullable = true),
       StructField("TimeZone", LongType, nullable = true)))
+
     Utility.log(s"Loading weather stations ${config.wbanAirportsPath}")
     val data = Utility.sparkSession.read.format("csv")
       .option("header", "true").option("inferSchema", "false").schema(schema)
@@ -22,29 +22,44 @@ class DataFeaturing(config: Configuration) {
       .withColumn("TimeZone", $"TimeZone" * 3600L)
       .withColumnRenamed("WBAN", "STATION_WBAN")
     Utility.show(data)
-    data
+
+    val outputPath = config.persistPath + config.mlMode + "/stations"
+    Utility.log(s"saving stations dataset into $outputPath")
+    data.repartition(config.partitions)
+      .write.mode(SaveMode.Overwrite)
+      .parquet(outputPath)
+
+    Utility.sparkSession.read.parquet(outputPath)
   }
 
-  def preloadFlights(mappingData: DataFrame): DataFeaturing = {
-    val s = config.flightsDataPath.mkString(",")
+  def extractFlightsFeatures(mappingData: DataFrame): DataFeaturing = {
+    val s = config.flightsPath.mkString(",")
     Utility.log(s"Loading flights records from $s")
-    val numericalColumns = Array("ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "ARR_DELAY_NEW", "WEATHER_DELAY", "NAS_DELAY", "CANCELLED", "DIVERTED")
     var data = Utility.sparkSession.read
       .option("header", "true")
       .option("inferSchema", "false")
-      .csv(config.flightsDataPath: _*)
+      .csv(config.flightsPath: _*)
+
+    //    Utility.log(s"flights: ${data.count()}")
+    //    Utility.log(s"on-time: ${data.filter("ARR_DELAY_NEW < 15").count()}")
+    //    Utility.log(s"delayed: ${data.filter("ARR_DELAY_NEW >= 15").count()}")
+    //    Utility.log(s"cancelled: ${data.filter("CANCELLED = 1").count()}")
+    //    Utility.log(s"diverted: ${data.filter("DIVERTED = 1").count()}")
+    //    Utility.log(s"delayed by nas+weather: ${data.filter("NAS_DELAY + WEATHER_DELAY >= 15").count()}")
+    //
+    //    Utility.exit()
 
     // remove empty columns
     val cols = data.columns.toSet.toList.filter(c => !c.trim.startsWith("_c"))
     data = data.select(cols.map(c => col(c)): _*)
     // convert delay related columns to numerical type
+    val numericalColumns = Array("ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "ARR_DELAY_NEW", "WEATHER_DELAY", "NAS_DELAY", "CANCELLED", "DIVERTED")
     numericalColumns.foreach(c => data = data.withColumn(c, col(c).cast(DoubleType)))
     data = data.na.fill(0.0, numericalColumns)
     Utility.show(data)
 
     Utility.log("computing flights identifier (FL_ID)...")
-    data = data.withColumn("FL_ID", concat_ws("_", $"ORIGIN_AIRPORT_ID", $"DEST_AIRPORT_ID",
-      $"FL_DATE", $"OP_CARRIER_AIRLINE_ID", $"OP_CARRIER_FL_NUM"))
+    data = data.withColumn("FL_ID", monotonically_increasing_id())
     Utility.show(data.select("FL_ID", "ORIGIN_AIRPORT_ID", "DEST_AIRPORT_ID", "FL_DATE", "OP_CARRIER_AIRLINE_ID", "OP_CARRIER_FL_NUM"))
 
     Utility.log("some delays flights...")
@@ -92,7 +107,7 @@ class DataFeaturing(config: Configuration) {
     // remove unnecessary columns
     data = data.drop("CRS_ELAPSED_TIME", "CRS_DEP_TIME", "FL_DATE", "STATION_WBAN", "TimeZone")
 
-    val outputPath = config.persistPath + "data.flights"
+    val outputPath = config.persistPath + config.mlMode + "/flights"
     Utility.log(s"saving flights dataset into $outputPath")
     data.repartition(config.partitions, col("year"), col("month"))
       .write.mode(SaveMode.Overwrite)
@@ -102,16 +117,17 @@ class DataFeaturing(config: Configuration) {
     this
   }
 
-  def preloadWeather(mappingData: DataFrame): DataFeaturing = {
+  def extractWeatherFeatures(mappingData: DataFrame): DataFeaturing = {
 
-    Utility.log(s"Loading weather records from ${config.weatherDataPath.mkString(",")}")
-    val weatherCondColumns = Array("SkyCondition", "DryBulbCelsius", "WeatherType", "StationPressure", "WindDirection", "Visibility", "RelativeHumidity", "WindSpeed")
+    Utility.log(s"Loading weather records from ${config.weatherPath.mkString(",")}")
+
     var data = Utility.sparkSession.read
       .option("header", "true")
       .option("inferSchema", "false")
-      .csv(config.weatherDataPath: _*)
-      .select(Array(col("WBAN"), col("Date"), col("Time")) ++ weatherCondColumns.map(c => col(c)): _*)
-    Utility.log(s"weather initial number of records: ${Utility.count(data)};")
+      .csv(config.weatherPath: _*)
+      .select("WBAN", "Date", "Time", "SkyCondition", "DryBulbCelsius", "WeatherType", "StationPressure", "WindDirection", "Visibility", "RelativeHumidity", "WindSpeed")
+
+    Utility.log(s"weather initial number of records: ${Utility.count(data)}")
     Utility.show(data)
 
     Utility.log("getting timezones of each station and converting weather record time to utc...")
@@ -120,89 +136,115 @@ class DataFeaturing(config: Configuration) {
       .withColumn("WEATHER_TIME", unix_timestamp(concat_ws("", $"Date", $"Time"), "yyyyMMddHHmm").minus($"TimeZone"))
       .withColumn("year", substring($"Date", 0, 4))
       .withColumn("month", substring($"Date", 5, 2))
-      .drop("STATION_WBAN", "WBAN", "TimeZone")
+      .drop("STATION_WBAN", "WBAN", "TimeZone", "Date", "Time")
     Utility.log(s"weather number of records after the mapping with the stations: ${Utility.count(data)}")
-    Utility.show(data)
+    Utility.show(data.filter("StationPressure <> 'M'"))
+
+    data = data.withColumn("W_ID", monotonically_increasing_id())
 
     Utility.log("cleaning numerical variables...")
-    var continuousVariables = Array("StationPressure", "RelativeHumidity", "WindSpeed", "Visibility", "DryBulbCelsius")
-    continuousVariables.foreach(c => {
-      data = data.withColumn(c, when(col(c).cast(DoubleType).isNull, null).otherwise(col(c).cast(DoubleType)))
-    })
+    val continuousVariables = Array("StationPressure", "RelativeHumidity", "WindSpeed", "Visibility", "DryBulbCelsius")
+    continuousVariables.foreach(c => data = data.withColumn(c, col(c).cast(DoubleType)))
+    data = data.withColumn("Visibility", when($"Visibility" > 10.0, 10.0).otherwise($"Visibility"))
 
-    Utility.log("transforming/cleaning weather variables...")
     Utility.log("cleaning SkyCondition...")
-    Array("SkyConditionLowCategory", "SkyConditionMediumCategory", "SkyConditionHighCategory")
-      .zipWithIndex.foreach { case (c, i) => data = data.withColumn(c, parseSkyConditionUdf($"SkyCondition", lit(i)))
-      .withColumn(c, when(col(c) === -1, null).otherwise(col(c)))
-    }
+    data = data.withColumn("SkyCondition", parseSkyConditionUdf($"SkyCondition"))
+    val skyConditionColumns = Array("SkyConditionLow", "SkyConditionMedium", "SkyConditionHigh")
+    skyConditionColumns.zipWithIndex.foreach { case (c, i) => data = data.withColumn(c, col("SkyCondition")(i)) }
 
     Utility.log("cleaning WeatherType...")
-    data = data.withColumn("WeatherTypeCategory", when(length($"WeatherType") < 2, null)
+    data = data.withColumn("WeatherTypeIndex", when(length($"WeatherType") < 2, 0.0)
       .otherwise(parseWeatherTypeUdf($"WeatherType")))
+      .drop("WeatherType", "SkyCondition")
 
     Utility.log("cleaning WindDirection...")
-    data = data.withColumn("WindDirectionCategory",
-      when($"WindDirection" === "VR", 9)
-        .when($"WindDirection" === "0", 8)
-        .when($"WindDirection".cast(IntegerType).isNull, null)
-        .otherwise(($"WindDirection".cast(IntegerType) / 45).cast(IntegerType)))
+    data = data.withColumn("WindDirection", when($"WindDirection" === "VR", -1.0)
+      .otherwise($"WindDirection".cast(DoubleType)))
     Utility.show(data)
 
-    Utility.log("applying forward/backward-fill on weather conditions data...")
-    val columns = Array("SkyConditionLowCategory", "SkyConditionMediumCategory", "SkyConditionHighCategory",
-      "WindDirectionCategory", "DryBulbCelsius", "WeatherTypeCategory",
-      "StationPressure", "Visibility", "RelativeHumidity", "WindSpeed")
-    val w0 = Window.partitionBy($"AIRPORTID").orderBy($"WEATHER_TIME".asc)
-    val w1 = Window.partitionBy($"AIRPORTID").orderBy($"WEATHER_TIME".desc)
-    columns.foreach(c => data =
-      data.withColumn(c, last(c, ignoreNulls = true).over(w0))
-        .withColumn(c, last(c, ignoreNulls = true).over(w1))
-    )
+    //    Utility.log("applying forward/backward-fill on weather conditions data...")
+    //    val columns = Array("WeatherTypeIndex", "WindDirection") ++ continuousVariables
+    //    val w0 = Window.partitionBy($"AIRPORTID").orderBy($"WEATHER_TIME".asc).rowsBetween(Window.unboundedPreceding, 0)
+    //    val w1 = Window.partitionBy($"AIRPORTID").orderBy($"WEATHER_TIME".asc).rowsBetween(0, Window.unboundedFollowing)
+    //    columns.foreach(c => data = data.withColumn(c, last(last(c, ignoreNulls = true).over(w0)).over(w1)))
 
     Utility.log("removing na...")
     data = data.na.drop().cache()
 
-    Utility.log("scaling continuous variables...")
-    data = data.withColumn("DryBulbCelsius", when($"DryBulbCelsius" <= -8, 0)
-      .when($"DryBulbCelsius" <= -3, 1).when($"DryBulbCelsius" <= 0, 2)
-      .when($"DryBulbCelsius" <= 35, 3).otherwise(4))
-      .withColumn("StationPressure", ((greatest(least($"StationPressure", lit(36)), lit(20)) - 20) / 4.1).cast(IntegerType))
-      .withColumn("Visibility", (greatest(least($"Visibility", lit(10)), lit(0)) / 2.6).cast(IntegerType)) // TODO: enhance the intervals
-      .withColumn("RelativeHumidity", ($"RelativeHumidity" / 26).cast(IntegerType))
-      .withColumn("WindSeep", when($"WindSpeed" <= 9, 0).when($"WindSpeed" <= 15, 1).when($"WindSpeed" <= 24, 2).otherwise(3))
-    Utility.show(data)
-    //Utility.exit()
+    //    val tmpOutputPath = config.persistPath + config.mlMode + "/weather.tmp"
+    //    Utility.log(s"saving weather dataset into $tmpOutputPath")
+    //    data.repartition(config.partitions, $"year", $"month")
+    //      .write.mode(SaveMode.Overwrite)
+    //      .partitionBy("year", "month")
+    //      .parquet(tmpOutputPath)
+    //    data = Utility.sparkSession.read.parquet(tmpOutputPath)
+    //      .withColumn("month", lpad($"month", 2, "0"))
 
-    Utility.log("assembling weather conditions")
-    val pipelinePath = s"${config.persistPath}pipeline.weather"
-    // apply one-hot encoding of columns of the features
-    val categoricalVariables = Array("SkyConditionLow", "SkyConditionMedium", "SkyConditionHigh", "WeatherType", "WindDirection")
-    val oneHotEncoder = new OneHotEncoder()
-      .setInputCols(categoricalVariables.map(c => c + "Category"))
-      .setOutputCols(categoricalVariables.map(c => c + "Vect"))
-    // creating vector assembler transformer to group the weather conditions features to one column
-    val vectorAssembler = new VectorAssembler()
-      .setInputCols(categoricalVariables.map(c => c + "Vect") ++ continuousVariables)
-      .setOutputCol("WEATHER_COND")
-    // the transformation pipeline that transforms categorial variables and assembles all variable into feature column
-    val pipeline = new Pipeline().setStages(Array(oneHotEncoder, vectorAssembler))
-    Utility.log("fitting features (one-hot encoding + vector assembler)...")
-    val pipelineModel = pipeline.fit(data)
-    Utility.log(s"saving weather trained pipeline to a file '$pipelinePath'...")
-    pipelineModel.write.overwrite.save(pipelinePath)
+    var pipelineModel: PipelineModel = null
+    val pipelinePath = s"${config.persistPath}/extract/pipeline"
+
+    if (config.mlMode.equalsIgnoreCase("extract")) {
+      // string indexer sky conditions features
+      var stages: Array[PipelineStage] = skyConditionColumns.map(c =>
+        new StringIndexer().setInputCol(c).setOutputCol(c + "Index").setHandleInvalid("skip")
+      )
+      //scaling continuous variables
+      stages ++= continuousVariables.flatMap(c => Array[PipelineStage](
+        new VectorAssembler().setInputCols(Array(c)).setOutputCol(c + "Index"),
+        new MinMaxScaler().setInputCol(c + "Index").setOutputCol(c + "Vect").setMin(0.0).setMax(1.0)
+      ))
+
+      // wind directions handling
+      val splits = Array(Double.NegativeInfinity, 0, 0.01, 45, 90, 135, 180, 225, 270, 315, 360, Double.PositiveInfinity)
+      stages :+= new Bucketizer().setInputCol("WindDirection").setOutputCol("WindDirectionIndex").setSplits(splits)
+
+      // apply one-hot encoding of columns of the features
+      val otherColumns = Array("WeatherType", "WindDirection")
+      stages :+= new OneHotEncoder()
+        .setInputCols((skyConditionColumns ++ otherColumns).map(c => c + "Index"))
+        .setOutputCols((skyConditionColumns ++ otherColumns).map(c => c + "Vect")).setHandleInvalid("keep")
+
+      // creating vector assembler transformer to group the weather conditions features to one column
+      val output = if (config.features > 0) "WEATHER_COND_" else "WEATHER_COND"
+      stages :+= new VectorAssembler()
+        .setInputCols((skyConditionColumns ++ otherColumns ++ continuousVariables).map(c => c + "Vect"))
+        .setOutputCol(output)
+
+      // dimensionality reduction (if requested)
+      if (config.features > 0)
+        stages :+= new PCA().setInputCol(output).setOutputCol("WEATHER_COND").setK(config.features)
+
+      // the transformation pipeline that transforms categorical variables and assembles all variable into feature column
+      val pipeline = new Pipeline().setStages(stages)
+
+      Utility.log("fitting features (one-hot encoding + vector assembler)...")
+      pipelineModel = pipeline.fit(data)
+
+      Utility.log(s"saving weather trained pipeline to a file '$pipelinePath'...")
+      pipelineModel.write.overwrite.save(pipelinePath)
+    }
+    else {
+      pipelineModel = PipelineModel.load(pipelinePath)
+    }
 
     Utility.log("transforming features (one-hot encoding + vector assembler)...")
     data = pipelineModel.transform(data)
 
-    data = data.select("year", "month", "AIRPORTID", "WEATHER_TIME", "WEATHER_COND").cache()
+    //    val corrMatrix = Correlation.corr(data.select("WEATHER_COND"), "WEATHER_COND", "pearson")
+    //    data.select("WEATHER_COND").show(truncate = false)
+    //    val Row(coeff1: Matrix) = corrMatrix.head
+    //    println("Pearson correlation matrix:\n" + coeff1.toString(35, Int.MaxValue))
+    //    Utility.exit()
+
+    data = data.select("year", "month", "W_ID", "AIRPORTID", "WEATHER_TIME", "WEATHER_COND")
+
     Utility.show(data)
 
-    val outputPath = config.persistPath + "data.weather"
+    val outputPath = config.persistPath + config.mlMode + "/weather"
     Utility.log(s"saving weather dataset into $outputPath")
-    data.repartition(config.partitions, $"year", $"month")
+    data.repartition(config.partitions, $"year", $"month", $"AIRPORTID")
       .write.mode(SaveMode.Overwrite)
-      .partitionBy("year", "month")
+      .partitionBy("year", "month", "AIRPORTID")
       .parquet(outputPath)
 
     this

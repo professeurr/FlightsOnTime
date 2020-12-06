@@ -1,32 +1,33 @@
-import org.apache.spark.ml.classification.{DecisionTreeClassifier, RandomForestClassifier}
+import org.apache.spark.ml.classification.{DecisionTreeClassifier, LogisticRegression, RandomForestClassifier}
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.sql.DataFrame
 
-abstract class FlightModel(configuration: Configuration) {
+abstract class FlightModel(configuration: Configuration, modelName: String, modelPath: String) {
 
   var pipelineModel: PipelineModel = _
 
   // our model's name used in the trace
-  def getName: String
+  def getName: String = modelName
 
   // name of the file where the pipeline is saved or loaded
-  def pipelineFilename: String
+  def pipelineFilename: String = modelPath
 
   // the fit function to be implemented by each concrete class
   def fit(trainingData: DataFrame): FlightModel
 
   // evaluate trained model on test dataset
   def evaluate(testData: DataFrame): DataFrame = {
-    pipelineModel = PipelineModel.load(configuration.persistPath + pipelineFilename)
-    pipelineModel.transform(testData)
+    pipelineModel = PipelineModel.load(configuration.persistPath + modelPath)
+    val predictions = pipelineModel.transform(testData)
+    predictions
   }
 
   def save(): Unit = {
-    Utility.log(s"saving the model $getName...")
-    pipelineModel.write.overwrite.save(configuration.persistPath + pipelineFilename)
+    Utility.log(s"saving the model $modelName...")
+    pipelineModel.write.overwrite.save(configuration.persistPath + modelPath)
   }
 
   def summarize(predictions: DataFrame): Unit = {
@@ -34,6 +35,7 @@ abstract class FlightModel(configuration: Configuration) {
     val rdd = predictions.select("prediction", "FL_ONTIME").rdd.map(row => (row.getDouble(0), row.getDouble(1)))
     val multiclassMetrics = new MulticlassMetrics(rdd)
     val binaryClassMetrics = new BinaryClassificationMetrics(rdd)
+
     val metricsDF = Seq(
       ("Accuracy         ", multiclassMetrics.accuracy),
       ("Area Under ROC   ", binaryClassMetrics.areaUnderROC()),
@@ -49,11 +51,8 @@ abstract class FlightModel(configuration: Configuration) {
   }
 }
 
-class FlightDelayCrossValidation(configuration: Configuration) extends FlightModel(configuration) {
-
-  override def getName: String = "CrossValidation"
-
-  override def pipelineFilename: String = "model.cv"
+class FlightDelayCrossValidation(configuration: Configuration, modelName: String, modelPath: String)
+  extends FlightModel(configuration, modelName, modelPath) {
 
   override def fit(trainingData: DataFrame): FlightModel = {
     // create decision tree model
@@ -92,7 +91,7 @@ class FlightDelayCrossValidation(configuration: Configuration) extends FlightMod
       .setEstimator(pipeline)
       .setEvaluator(evaluator)
       .setEstimatorParamMaps(paramGrid)
-      .setNumFolds(3)
+      .setNumFolds(5)
       .setParallelism(configuration.partitions)
 
     // run the cross-validation engine
@@ -106,17 +105,15 @@ class FlightDelayCrossValidation(configuration: Configuration) extends FlightMod
     Utility.log("best model: " + pipelineModel.toString())
     this
   }
-
 }
 
-class FlightDelayDecisionTree(configuration: Configuration) extends FlightModel(configuration) {
-
-  override def getName: String = "DecisionTree"
-
-  override def pipelineFilename: String = "model.cv"
+class FlightDelayDecisionTree(configuration: Configuration, modelName: String, modelPath: String)
+  extends FlightModel(configuration, modelName, modelPath) {
 
   override def fit(trainingData: DataFrame): FlightModel = {
     val dt = new DecisionTreeClassifier()
+      .setMaxBins(7)
+      .setMaxDepth(20)
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
     val pipeline = new Pipeline().setStages(Array(dt))
@@ -125,21 +122,38 @@ class FlightDelayDecisionTree(configuration: Configuration) extends FlightModel(
   }
 }
 
-class FlightDelayRandomForest(configuration: Configuration) extends FlightModel(configuration) {
-
-  override def getName: String = "RandomForest"
-
-  override def pipelineFilename: String = "model.rf"
+class FlightDelayRandomForest(configuration: Configuration, modelName: String, modelPath: String)
+  extends FlightModel(configuration, modelName, modelPath) {
 
   override def fit(trainingData: DataFrame): FlightModel = {
     val rf = new RandomForestClassifier()
-      .setMaxBins(5)
-      .setMaxDepth(15)
-      .setNumTrees(10)
+      .setMaxBins(8)
+      .setMaxDepth(25)
+      .setNumTrees(25)
       .setImpurity("gini")
       .setLabelCol("FL_ONTIME")
       .setFeaturesCol("WEATHER_COND")
     val pipeline = new Pipeline().setStages(Array(rf))
+    pipelineModel = pipeline.fit(trainingData)
+    this
+  }
+
+}
+
+class FlightDelayLogisticRegression(configuration: Configuration, modelName: String, modelPath: String)
+  extends FlightModel(configuration, modelName, modelPath) {
+
+  override def fit(trainingData: DataFrame): FlightModel = {
+    val lr = new LogisticRegression()
+      .setMaxIter(1000)
+      .setRegParam(0.1)
+      .setElasticNetParam(0.1)
+      .setTol(1e-6)
+      .setFamily("binomial")
+      .setLabelCol("FL_ONTIME")
+      .setFeaturesCol("WEATHER_COND")
+
+    val pipeline = new Pipeline().setStages(Array(lr))
     pipelineModel = pipeline.fit(trainingData)
     this
   }

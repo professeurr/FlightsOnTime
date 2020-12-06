@@ -18,6 +18,7 @@ object Utility {
   Logger.getLogger("org").setLevel(Level.OFF)
   Logger.getLogger("akka").setLevel(Level.OFF)
 
+
   var config: Configuration = initialize
 
   lazy val sparkSession: SparkSession = SparkSession.builder()
@@ -44,9 +45,9 @@ object Utility {
     val f = Source.fromFile(configFile)
     // Parse config file into Configuration object
     val json = parse(f.getLines().mkString)
-    config = json.camelizeKeys.extract[Configuration]
     f.close()
-    config
+
+    json.camelizeKeys.extract[Configuration].init()
   }
 
   def destroy(): Unit = {
@@ -86,7 +87,7 @@ object UdfUtility extends Serializable {
   // fill missing weather records over frame-th hours before the flight departure.
   // in strict mode, for a particular missing data point, only the record the precedent record is used to fill up the gap
   // otherwise we use the closest record
-  def fillMissingData(originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int): Seq[Double] = {
+  def fillMissingData2(originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int): Seq[Double] = {
     var cds: Seq[Double] = null
     val delta = step * 3600
     cds = List[Double]()
@@ -100,53 +101,68 @@ object UdfUtility extends Serializable {
     if (cds.isEmpty) null else cds
   }
 
-  val fillWeatherDataUdf: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int) => {
-    fillMissingData(originTime, times, weatherConds, frame, step)
-  })
-
-  val assembleVectors: UserDefinedFunction = udf((cond1: Seq[Double], cond2: Seq[Double]) => {
-    Vectors.dense((cond1 ++ cond2).toArray)
-  })
-
-  val fillWeatherDataUdf2: UserDefinedFunction = udf((originTime: Long, depTimes: Seq[Long], depWeatherConds: Seq[Vector],
-                                                      destTime: Long, arrTimes: Seq[Long], arrWeatherConds: Seq[Vector],
-                                                      frame: Int, step: Int) => {
-    var res: Seq[Double] = null
-    val depData = fillMissingData(originTime, depTimes, depWeatherConds, frame, step)
-    if (depData != null) {
-      val arrData = fillMissingData(destTime, arrTimes, arrWeatherConds, frame, step)
-      if (arrData != null)
-        res = depData ++ arrData
+  def fillMissingData(originTime: Long, times: Seq[Long], weatherIds: Seq[Long], frame: Int, step: Int): Seq[Long] = {
+    var cds: Seq[Long] = null
+    val delta = step * 3600
+    cds = List[Long]()
+    var curTime = originTime
+    for (_ <- 1 to frame) {
+      val diff = times.map(t => Math.abs(curTime - t))
+      val index = diff.indexOf(diff.min)
+      cds ++= Array(weatherIds(index))
+      curTime -= delta
     }
-    if (res != null) Vectors.dense(res.toArray) else null
+    if (cds.isEmpty) null else cds
+  }
+
+  val fillWeatherDataUdf: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherIds: Seq[Long], frame: Int, step: Int) => {
+    fillMissingData(originTime, times, weatherIds, frame, step)
+  })
+
+  val fillWeatherDataUdf2: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int) => {
+    fillMissingData2(originTime, times, weatherConds, frame, step)
+  })
+
+  val assembleVectors: UserDefinedFunction = udf((cond1: Seq[Vector], cond2: Seq[Vector]) => {
+    Vectors.dense((cond1 ++ cond2).flatMap(x => x.toArray).toArray)
   })
 
   val skys: Array[String] = Array("SKC", "FEW", "SCT", "BKN", "OVC")
 
   // SKC0200 SCT03011 BKN0400
   // 1 3 4
-  val parseSkyConditionUdf: UserDefinedFunction = udf((skyCond: String, index: Int) => {
+  val parseSkyConditionUdf: UserDefinedFunction = udf((skyCond: String) => {
+    val conds = skyCond.trim.split(" ")
+    val full = (conds ++ Array.fill(3 - conds.length)("ZZZ")).map(x => if (x.length < 3) "ZZZ" else x.substring(0, 3))
+    full
+  })
+
+  // SKC0200 SCT03011 BKN0400
+  // 1 3 4
+  val parseSkyConditionUdf2: UserDefinedFunction = udf((skyCond: String, index: Int) => {
     if (skyCond.isEmpty) -1
     else {
       val skyConds = skyCond.trim.split(" ")
-      val x = skyConds(Math.min(index, skyConds.length - 1))
-      if (x.length >= 3)
-        skys.indexOf(x.substring(0, 3))
-      else -1
+      if (skyConds.length <= index) -1
+      else {
+        val x = skyConds(index)
+        if (x.length >= 3)
+          skys.indexOf(x.substring(0, 3))
+        else -1
+      }
     }
   })
 
+  implicit def strContains(str: Array[String], arr: Array[String]): Double = {
+    if (str.intersect(arr).isEmpty) 0.0 else 1.0
+  }
+
+  val descriptor: Array[String] = Array("MI", "BC", "PR", "TS", "BL", "SH", "DR", "FZ")
+  val precipitation: Array[String] = Array("DZ", "RA", "SN", "SG", "IC", "PL", "GR", "GS")
+  val obscuration: Array[String] = Array("BR", "FG", "FU", "VA", "SA", "HZ", "PY", "DU", "SQ", "SS", "DS", "PO", "FC")
   val parseWeatherTypeUdf: UserDefinedFunction = udf((weatherType: String) => {
-    weatherType.trim.replace("+", "").replace("-", "").replace(" ", "").length / 2
+    val x = weatherType.replace(" ", "").grouped(2).toArray.distinct
+    4 * strContains(x, descriptor) + 2 * strContains(x, precipitation) + strContains(x, obscuration)
   })
 
-  val computeLineUdf: UserDefinedFunction = udf((airport1: String, airport2: String) => {
-    try {
-      val id1 = airport1.toInt
-      val id2 = airport2.toInt
-      Math.min(id1, id2) + "_" + Math.max(id1, id2)
-    } catch {
-      case _: Exception => null
-    }
-  })
 }
