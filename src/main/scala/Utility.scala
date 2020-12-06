@@ -87,44 +87,25 @@ object UdfUtility extends Serializable {
   // fill missing weather records over frame-th hours before the flight departure.
   // in strict mode, for a particular missing data point, only the record the precedent record is used to fill up the gap
   // otherwise we use the closest record
-  def fillMissingData2(originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int): Seq[Double] = {
+  def fillMissingData(originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int): Seq[Double] = {
     var cds: Seq[Double] = null
-    val delta = step * 3600
     cds = List[Double]()
     var curTime = originTime
     for (_ <- 1 to frame) {
       val diff = times.map(t => Math.abs(curTime - t))
       val index = diff.indexOf(diff.min)
       cds ++= weatherConds(index).toDense.toArray
-      curTime -= delta
+      curTime -= step
     }
     if (cds.isEmpty) null else cds
   }
 
-  def fillMissingData(originTime: Long, times: Seq[Long], weatherIds: Seq[Long], frame: Int, step: Int): Seq[Long] = {
-    var cds: Seq[Long] = null
-    val delta = step * 3600
-    cds = List[Long]()
-    var curTime = originTime
-    for (_ <- 1 to frame) {
-      val diff = times.map(t => Math.abs(curTime - t))
-      val index = diff.indexOf(diff.min)
-      cds ++= Array(weatherIds(index))
-      curTime -= delta
-    }
-    if (cds.isEmpty) null else cds
-  }
-
-  val fillWeatherDataUdf: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherIds: Seq[Long], frame: Int, step: Int) => {
-    fillMissingData(originTime, times, weatherIds, frame, step)
+  val fillWeatherDataUdf: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int) => {
+    fillMissingData(originTime, times, weatherConds, frame, step)
   })
 
-  val fillWeatherDataUdf2: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int) => {
-    fillMissingData2(originTime, times, weatherConds, frame, step)
-  })
-
-  val assembleVectors: UserDefinedFunction = udf((cond1: Seq[Vector], cond2: Seq[Vector]) => {
-    Vectors.dense((cond1 ++ cond2).flatMap(x => x.toArray).toArray)
+  val assembleVectors: UserDefinedFunction = udf((cond1: Seq[Double], cond2: Seq[Double]) => {
+    Vectors.dense((cond1 ++ cond2).toArray)
   })
 
   val skys: Array[String] = Array("SKC", "FEW", "SCT", "BKN", "OVC")

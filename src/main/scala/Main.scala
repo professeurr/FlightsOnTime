@@ -88,14 +88,14 @@ object Main {
     val dataLoader = new DataTransformer(configuration)
 
     var t1 = System.nanoTime()
-    val (flightDepData, flightDestData) = dataLoader.transformFlightData()
+    val flightData = dataLoader.transformFlightData()
     Utility.log(s"[flightDataLoad elapsed in: ${elapsed(t1)}]")
 
     t1 = System.nanoTime()
     val weatherData = dataLoader.transformWeatherData().cache()
     Utility.log(s"[weatherDataLoad elapsed in: ${elapsed(t1)}]")
 
-    val data = dataLoader.joinData(flightDepData, flightDestData, weatherData)
+    val data = dataLoader.joinData(flightData, weatherData)
     Utility.log(s"[data combining elapsed in: ${elapsed(t1)}]")
 
     Utility.log(s"[data transformation elapsed in: ${elapsed(t0)}]")

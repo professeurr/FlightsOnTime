@@ -1,10 +1,10 @@
 {
-  "ml_mode": "extract, transformx, trainx, evaluatex",
+  "ml_mode": "extractx, transformx, train, evaluatex",
   "root_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/workspace/",
   "persist_path": "persist/",
   "wban_airports_path": "data/wban_airport_timezone.csv",
   "flights_data_path": [
-    "data/flights/2013*"
+    "data/flights/201301*"
   ],
   "weather_data_path": [
     "data/weather/201301*"
@@ -25,5 +25,5 @@
   "flights_delay_threshold": 15,
   "weather_time_frame": 12,
   "weather_time_step": 1,
-  "verbose": true
+  "verbose": false
 }
