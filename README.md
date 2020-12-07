@@ -1,9 +1,9 @@
 # Prédiction des retards de vols avec Spark ML
 
-# Context technique
+## Context technique
 Le projet est réalisé avec `scala 2.012.10` et `Spark 3.0.0`
 
-# Exécuter l'application
+## Exécuter l'application
 Le package de l'application (.jar)  se trouve dans le répertoire `./bin` situé à la racine du projet.
 Il s'exécute avec la commande spark-submit comme suit:
 
