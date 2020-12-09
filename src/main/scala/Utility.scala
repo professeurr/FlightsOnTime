@@ -79,6 +79,15 @@ object Utility {
     println(s"$msg elapsed time: ${(t1 - t0) / 1000} s")
     result
   }
+
+  def readParquet(path: String*): DataFrame = {
+    Utility.sparkSession.read.option("inferSchema", "false").parquet(path: _*)
+  }
+
+  def readCsv(path: String*): DataFrame = {
+    Utility.sparkSession.read.option("header", "true").option("inferSchema", "false").csv(path: _*)
+
+  }
 }
 
 
@@ -87,21 +96,29 @@ object UdfUtility extends Serializable {
   // fill missing weather records over frame-th hours before the flight departure.
   // in strict mode, for a particular missing data point, only the record the precedent record is used to fill up the gap
   // otherwise we use the closest record
-  def fillMissingData(originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int): Seq[Double] = {
+  def fillMissingData(weatherConds: Seq[Vector], frame: Int, step: Int): Seq[Double] = {
+    if (weatherConds.length < frame) null else weatherConds.toArray.slice(0, frame).flatMap(x => x.toArray).toArray
+  }
+
+  def fillMissingData2(originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int): Seq[Double] = {
     var cds: Seq[Double] = null
     cds = List[Double]()
     var curTime = originTime
     for (_ <- 1 to frame) {
       val diff = times.map(t => Math.abs(curTime - t))
       val index = diff.indexOf(diff.min)
-      cds ++= weatherConds(index).toDense.toArray
+      cds ++= weatherConds(index).toArray
       curTime -= step
     }
     if (cds.isEmpty) null else cds
   }
 
-  val fillWeatherDataUdf: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int) => {
-    fillMissingData(originTime, times, weatherConds, frame, step)
+  val fillWeatherDataUdf: UserDefinedFunction = udf((weatherConds: Seq[Vector], frame: Int, step: Int) => {
+    fillMissingData(weatherConds, frame, step)
+  })
+
+  val fillWeatherDataUdf2: UserDefinedFunction = udf((originTime: Long, times: Seq[Long], weatherConds: Seq[Vector], frame: Int, step: Int) => {
+    fillMissingData2(originTime, times, weatherConds, frame, step)
   })
 
   val assembleVectors: UserDefinedFunction = udf((cond1: Seq[Double], cond2: Seq[Double]) => {
@@ -112,10 +129,16 @@ object UdfUtility extends Serializable {
 
   // SKC0200 SCT03011 BKN0400
   // 1 3 4
+  def parseSkyCondition(skyCond: String): String = {
+    if (skyCond.length < 3) null else skyCond.substring(0, 3)
+    //    val conds = skyCond.trim.split(" ")
+    //    if (conds(0).length < 3) null else conds(0).substring(0, 3)
+    //    val full = (conds ++ Array.fill(3 - conds.length)("ZZZ")).map(x => if (x.length < 3) "ZZZ" else x.substring(0, 3))
+    //    full
+  }
+
   val parseSkyConditionUdf: UserDefinedFunction = udf((skyCond: String) => {
-    val conds = skyCond.trim.split(" ")
-    val full = (conds ++ Array.fill(3 - conds.length)("ZZZ")).map(x => if (x.length < 3) "ZZZ" else x.substring(0, 3))
-    full
+    parseSkyCondition(skyCond)
   })
 
   // SKC0200 SCT03011 BKN0400

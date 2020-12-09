@@ -1,14 +1,18 @@
 spark-submit \
   --master spark://127.0.0.1:7077 \
   --deploy-mode client \
-  --executor-cores 2 \
+  --executor-cores 4 \
   --num-executors 1 \
-  --executor-memory 10G \
+  --executor-memory 4G \
   --files ./config.json \
   --conf spark.sql.autoBroadcastJoinThreshold=-1 \
-  --conf spark.sql.shuffle.partitions=10 \
-  --conf spark.executor.memoryOverhead=2048 \
-  --conf spark.driver.memoryOverhead=4096 \
+  --conf spark.sql.execution.useObjectHashAggregateExec=true \
+  --conf spark.sql.objectHashAggregate.sortBased.fallbackThreshold=12800000 \
+  --conf spark.sql.join.preferSortMergeJoin=false \
+  --conf spark.sql.shuffle.partitions=64 \
+  --conf spark.executor.memoryOverhead=4G \
+  --conf spark.driver.memoryOverhead=4G \
+  --conf spark.driver.memory=6G \
   --class Main \
   target/scala-2.12/flightsontime_klouvi_riva_2.12-1.0.jar
 

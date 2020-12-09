@@ -5,10 +5,8 @@ case class Configuration(
                           features: Int = 8,
                           rootPath: String = "./",
                           var wbanAirportsPath: String,
-                          var flightsDataPath: Array[String],
-                          var weatherDataPath: Array[String],
-                          var flightsExtractPath: Array[String],
-                          var weatherExtractPath: Array[String],
+                          var flightsTrainPath: Array[String],
+                          var weatherTrainPath: Array[String],
                           var flightsTestPath: Array[String],
                           var weatherTestPath: Array[String],
                           var persistPath: String,
@@ -30,11 +28,8 @@ case class Configuration(
     persistPath = rootPath + persistPath
     wbanAirportsPath = rootPath + wbanAirportsPath
 
-    flightsDataPath = flightsDataPath.map(x => rootPath + x)
-    weatherDataPath = weatherDataPath.map(x => rootPath + x)
-
-    flightsExtractPath = flightsExtractPath.map(x => persistPath + "extract/" + x)
-    weatherExtractPath = weatherExtractPath.map(x => persistPath + "extract/" + x)
+    flightsTrainPath = flightsTrainPath.map(x => rootPath + x)
+    weatherTrainPath = weatherTrainPath.map(x => rootPath + x)
 
     flightsTestPath = flightsTestPath.map(x => rootPath + x)
     weatherTestPath = weatherTestPath.map(x => rootPath + x)

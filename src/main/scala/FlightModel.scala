@@ -1,11 +1,15 @@
-import org.apache.spark.ml.classification.{DecisionTreeClassifier, LogisticRegression, RandomForestClassifier}
-import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
+import org.apache.spark.ml.classification.{DecisionTreeClassifier, RandomForestClassifier}
+import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, RegressionEvaluator}
+import org.apache.spark.ml.regression.{GBTRegressor, RandomForestRegressor}
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions.when
 
 abstract class FlightModel(configuration: Configuration, modelName: String, modelPath: String) {
+
+  import Utility.sparkSession.implicits._
 
   var pipelineModel: PipelineModel = _
 
@@ -31,24 +35,74 @@ abstract class FlightModel(configuration: Configuration, modelName: String, mode
   }
 
   def summarize(predictions: DataFrame): Unit = {
-    //predictions.select("FL_ONTIME", "prediction").show()
-    val rdd = predictions.select("prediction", "FL_ONTIME").rdd.map(row => (row.getDouble(0), row.getDouble(1)))
+    var predict = predictions
+    if (modelName.contains("Regressor")) {
+      predict = predict.withColumnRenamed("prediction", "delay_prediction")
+        .withColumn("delayed", when($"delay" > configuration.flightsDelayThreshold, 1.0).otherwise(0.0))
+        .withColumn("prediction", when($"delay_prediction" > configuration.flightsDelayThreshold, 1.0).otherwise(0.0))
+
+      //predict.select("DELAY", "delay_prediction", "FL_ONTIME", "prediction").show(truncate = false)
+      val evaluator = new RegressionEvaluator()
+        .setLabelCol("delay")
+        .setPredictionCol("delay_prediction")
+        .setMetricName("rmse")
+      val rmse = evaluator.evaluate(predict)
+      Utility.log(s"Root Mean Squared Error (RMSE): $rmse")
+    }
+
+    val rdd = predict.select("prediction", "delayed").rdd.map(row => (row.getDouble(0), row.getDouble(1)))
     val multiclassMetrics = new MulticlassMetrics(rdd)
     val binaryClassMetrics = new BinaryClassificationMetrics(rdd)
 
     val metricsDF = Seq(
       ("Accuracy         ", multiclassMetrics.accuracy),
       ("Area Under ROC   ", binaryClassMetrics.areaUnderROC()),
-      ("Delayed Recall   ", multiclassMetrics.recall(0.0)),
-      ("Delayed Precision", multiclassMetrics.precision(0.0)),
-      ("OnTime Recall    ", multiclassMetrics.recall(1.0)),
-      ("OnTime Precision ", multiclassMetrics.precision(1.0)))
+      ("Delayed Recall   ", multiclassMetrics.recall(1.0)),
+      ("Delayed Precision", multiclassMetrics.precision(1.0)),
+      ("OnTime Recall    ", multiclassMetrics.recall(0.0)),
+      ("OnTime Precision ", multiclassMetrics.precision(0.0)))
       .map(r => "\t" + r._1 + s": ${Math.round(100 * r._2)}%")
       .mkString("\n")
 
-    Utility.log(s"$getName metrics\n$metricsDF")
-    //metricsDF
+    Utility.log(s"$getName metrics\n\tThreshold        : ${configuration.flightsDelayThreshold}min\n$metricsDF")
   }
+
+}
+
+class FlightDelayRandomForestRegressor(configuration: Configuration, modelName: String, modelPath: String)
+  extends FlightModel(configuration, modelName, modelPath) {
+
+  override def fit(trainingData: DataFrame): FlightModel = {
+    val rf = new RandomForestRegressor()
+      .setMaxBins(10)
+      .setMaxDepth(20)
+      .setNumTrees(15)
+      .setImpurity("variance")
+      .setLabelCol("delay")
+      .setFeaturesCol("features")
+    val pipeline = new Pipeline().setStages(Array(rf))
+    pipelineModel = pipeline.fit(trainingData)
+    this
+  }
+
+}
+
+class FlightDelayRandomForestClassifier(configuration: Configuration, modelName: String, modelPath: String)
+  extends FlightModel(configuration, modelName, modelPath) {
+
+  override def fit(trainingData: DataFrame): FlightModel = {
+    val rf = new RandomForestClassifier()
+      .setMaxBins(10)
+      .setMaxDepth(15)
+      .setNumTrees(20)
+      .setImpurity("gini")
+      .setLabelCol("FL_ONTIME")
+      .setFeaturesCol("WEATHER_COND")
+    val pipeline = new Pipeline().setStages(Array(rf))
+    pipelineModel = pipeline.fit(trainingData)
+    this
+  }
+
 }
 
 class FlightDelayCrossValidation(configuration: Configuration, modelName: String, modelPath: String)
@@ -107,55 +161,16 @@ class FlightDelayCrossValidation(configuration: Configuration, modelName: String
   }
 }
 
-class FlightDelayDecisionTree(configuration: Configuration, modelName: String, modelPath: String)
+class FlightDelayGBTRegressor(configuration: Configuration, modelName: String, modelPath: String)
   extends FlightModel(configuration, modelName, modelPath) {
 
   override def fit(trainingData: DataFrame): FlightModel = {
-    val dt = new DecisionTreeClassifier()
-      .setMaxBins(7)
-      .setMaxDepth(20)
-      .setLabelCol("FL_ONTIME")
+    val gbt = new GBTRegressor()
+      .setMaxIter(100)
+      .setLabelCol("DELAY")
       .setFeaturesCol("WEATHER_COND")
-    val pipeline = new Pipeline().setStages(Array(dt))
+    val pipeline = new Pipeline().setStages(Array(gbt))
     pipelineModel = pipeline.fit(trainingData)
     this
   }
-}
-
-class FlightDelayRandomForest(configuration: Configuration, modelName: String, modelPath: String)
-  extends FlightModel(configuration, modelName, modelPath) {
-
-  override def fit(trainingData: DataFrame): FlightModel = {
-    val rf = new RandomForestClassifier()
-      .setMaxBins(8)
-      .setMaxDepth(25)
-      .setNumTrees(25)
-      .setImpurity("gini")
-      .setLabelCol("FL_ONTIME")
-      .setFeaturesCol("WEATHER_COND")
-    val pipeline = new Pipeline().setStages(Array(rf))
-    pipelineModel = pipeline.fit(trainingData)
-    this
-  }
-
-}
-
-class FlightDelayLogisticRegression(configuration: Configuration, modelName: String, modelPath: String)
-  extends FlightModel(configuration, modelName, modelPath) {
-
-  override def fit(trainingData: DataFrame): FlightModel = {
-    val lr = new LogisticRegression()
-      .setMaxIter(1000)
-      .setRegParam(0.1)
-      .setElasticNetParam(0.1)
-      .setTol(1e-6)
-      .setFamily("binomial")
-      .setLabelCol("FL_ONTIME")
-      .setFeaturesCol("WEATHER_COND")
-
-    val pipeline = new Pipeline().setStages(Array(lr))
-    pipelineModel = pipeline.fit(trainingData)
-    this
-  }
-
 }

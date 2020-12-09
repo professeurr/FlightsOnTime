@@ -1,9 +1,21 @@
-Pearson correlation matrix:
-1.0                     1.248234680166593E-16    1.3732234927256264E-16  -9.590575729574532E-16  9.04752306981681E-16     -4.334279831206711E-16  2.501782374078344E-16    -2.320077126354665E-17   
-1.248234680166593E-16   1.0                      8.096686975872777E-16   -7.421280428327923E-17  -2.3757859245912864E-16  2.122202118093868E-16   -3.7672338613173897E-16  -1.9333618698461153E-15  
-1.3732234927256264E-16  8.096686975872777E-16    1.0                     -2.154932693599405E-16  2.974812447065677E-16    5.984220517909831E-16   1.95285739055931E-16     1.5881345616370704E-15   
--9.590575729574532E-16  -7.421280428327923E-17   -2.154932693599405E-16  1.0                     1.2187881613124014E-15   -8.493081628158295E-17  -6.061744673825956E-16   1.3388133776609264E-16   
-9.04752306981681E-16    -2.3757859245912864E-16  2.974812447065677E-16   1.2187881613124014E-15  1.0                      6.503053501899828E-16   -1.3917531838256139E-15  -1.6112860084345055E-15  
--4.334279831206711E-16  2.122202118093868E-16    5.984220517909831E-16   -8.493081628158295E-17  6.503053501899828E-16    1.0                     -3.060356601826165E-16   2.2201857728215304E-16   
-2.501782374078344E-16   -3.7672338613173897E-16  1.95285739055931E-16    -6.061744673825956E-16  -1.3917531838256139E-15  -3.060356601826165E-16  1.0                      -6.829531735252968E-15   
--2.320077126354665E-17  -1.9333618698461153E-15  1.5881345616370704E-15  1.3388133776609264E-16  -1.6112860084345055E-15  2.2201857728215304E-16  -6.829531735252968E-15   1.0     
+== Physical Plan ==
+*(6) Filter isnotnull(ORIGIN_WEATHER_COND#4092)
++- ObjectHashAggregate(keys=[FL_ID#3939L, FL_DEP_TIME#3940L], functions=[collect_list(WEATHER_TIME#4023L, 0, 0), collect_list(WEATHER_COND#4022, 0, 0)])
+   +- Exchange hashpartitioning(FL_ID#3939L, FL_DEP_TIME#3940L, 100), true, [id=#820]
+      +- ObjectHashAggregate(keys=[FL_ID#3939L, FL_DEP_TIME#3940L], functions=[partial_collect_list(WEATHER_TIME#4023L, 0, 0), partial_collect_list(WEATHER_COND#4022, 0, 0)])
+         +- *(5) Project [FL_ID#3939L, FL_DEP_TIME#3940L, WEATHER_COND#4022, WEATHER_TIME#4023L]
+            +- *(5) SortMergeJoin [ORIGIN_AIRPORT_ID#3938], [AIRPORTID#4021], Inner, ((WEATHER_TIME#4023L >= (FL_DEP_TIME#3940L - 43200)) AND (WEATHER_TIME#4023L <= FL_DEP_TIME#3940L))
+               :- *(2) Sort [ORIGIN_AIRPORT_ID#3938 ASC NULLS FIRST], false, 0
+               :  +- Exchange hashpartitioning(ORIGIN_AIRPORT_ID#3938, 100), true, [id=#803]
+               :     +- *(1) Filter (isnotnull(FL_DEP_TIME#3940L) AND isnotnull(ORIGIN_AIRPORT_ID#3938))
+               :        +- InMemoryTableScan [ORIGIN_AIRPORT_ID#3938, FL_ID#3939L, FL_DEP_TIME#3940L], [isnotnull(FL_DEP_TIME#3940L), isnotnull(ORIGIN_AIRPORT_ID#3938)]
+               :              +- InMemoryRelation [DEST_AIRPORT_ID#3937, ORIGIN_AIRPORT_ID#3938, FL_ID#3939L, FL_DEP_TIME#3940L, FL_ARR_TIME#3941L, DELAY#3942L, month#3943, FL_ONTIME#3944], StorageLevel(disk, memory, deserialized, 1 replicas)
+               :                    +- *(1) ColumnarToRow
+               :                       +- BatchScan[DEST_AIRPORT_ID#3937, ORIGIN_AIRPORT_ID#3938, FL_ID#3939L, FL_DEP_TIME#3940L, FL_ARR_TIME#3941L, DELAY#3942L, month#3943, FL_ONTIME#3944] ParquetScan Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/workspace/per..., ReadSchema: struct<DEST_AIRPORT_ID:string,ORIGIN_AIRPORT_ID:string,FL_ID:bigint,FL_DEP_TIME:bigint,FL_ARR_TIM..., PushedFilters: []
+               +- *(4) Sort [AIRPORTID#4021 ASC NULLS FIRST], false, 0
+                  +- Exchange hashpartitioning(AIRPORTID#4021, 100), true, [id=#811]
+                     +- *(3) Filter (isnotnull(WEATHER_TIME#4023L) AND isnotnull(AIRPORTID#4021))
+                        +- InMemoryTableScan [AIRPORTID#4021, WEATHER_COND#4022, WEATHER_TIME#4023L], [isnotnull(WEATHER_TIME#4023L), isnotnull(AIRPORTID#4021)]
+                              +- InMemoryRelation [AIRPORTID#4021, WEATHER_COND#4022, WEATHER_TIME#4023L], StorageLevel(disk, memory, deserialized, 1 replicas)
+                                    +- *(1) Project [AIRPORTID#4021, WEATHER_COND#4022, WEATHER_TIME#4023L]
+                                       +- BatchScan[AIRPORTID#4021, WEATHER_COND#4022, WEATHER_TIME#4023L] ParquetScan Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/workspace/per..., ReadSchema: struct<AIRPORTID:string,WEATHER_COND:struct<type:tinyint,size:int,indices:array<int>,values:array..., PushedFilters: []
