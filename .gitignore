@@ -3,3 +3,4 @@
 /target/
 /src/main/resources/data/weather/*
 /src/main/resources/data/flights/*
+/workspace/
