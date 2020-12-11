@@ -1,12 +1,12 @@
 {
-  "ml_mode": "extract, transform, train, evaluatex",
+  "ml_mode": "extract, transform, train, evaluate",
   "root_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/workspace/",
   "wban_airports_path": "data/wban_airport_timezone.csv",
   "flights_train_path": [
-    "data/flights/201301*"
+    "data/flights/2013*"
   ],
   "weather_train_path": [
-    "data/weather/201301*"
+    "data/weather/2013*"
   ],
   "flights_test_path": [
     "data/flights/201401*",

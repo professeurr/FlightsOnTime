@@ -57,7 +57,7 @@ class DataFeaturing(config: Configuration) {
     Utility.log("getting timezones of each station and converting weather record time to utc...")
     data = data.join(mappingData, Array("WBAN"), "inner")
       .withColumn("WEATHER_TIME", unix_timestamp(concat_ws("", $"Date", $"Time"), "yyyyMMddHHmm").minus($"TimeZone"))
-      .drop("WBAN", "TimeZone", "Time", "Date")
+      .drop("WBAN", "Time", "Date")
 
     Utility.log(s"weather number of records: ${Utility.count(data)}")
 
@@ -71,6 +71,7 @@ class DataFeaturing(config: Configuration) {
       .withColumn("WeatherTypeIndex", when($"WeatherType" === "M", null).when(length($"WeatherType") < 2, 0.0).otherwise(1.0))
       .withColumn("WindDirectionIndex", when($"WindDirection" === "VR", -1.0).otherwise(($"WindDirection" / 45).cast(IntegerType)))
       .withColumn("AirportIdIndex", $"AirportId".cast(IntegerType))
+      .withColumn("TimeZone", $"TimeZone".cast(IntegerType))
       .withColumn("WeekDayIndex", dayofweek(to_date($"WEATHER_TIME".cast(TimestampType))).cast(IntegerType))
       .withColumn("SeasonIndex", UdfUtility.parseSeasonUdf(month(to_date($"WEATHER_TIME".cast(TimestampType)))))
       .drop("WeatherType", "WindDirection")
@@ -97,10 +98,11 @@ class DataFeaturing(config: Configuration) {
 
       // creating vector assembler transformer to group the weather conditions features to one column
       val output = if (config.features > 0) "WEATHER_COND_" else "WEATHER_COND"
-      stages :+= new VectorAssembler()
-        .setInputCols(continuousVariables ++ Array("SkyConditionVect", "WindDirectionIndex",
-          "WeatherTypeIndex", "WeekDayIndex", "AirportIdIndex", "SeasonIndex"))
-        .setOutputCol(output)
+      stages :+= new VectorAssembler().setInputCols(
+        Array("StationPressure", "RelativeHumidity", "WindSpeed", "Visibility", "DryBulbCelsius")
+        ++Array("SkyConditionVect", "WindDirectionIndex", "WeatherTypeIndex")
+        ++Array("WeekDayIndex", "SeasonIndex", "TimeZone"/*, "AirportIdIndex"*/)
+      ).setOutputCol(output)
 
       // dimensionality reduction (if requested)
       if (config.features > 0)
