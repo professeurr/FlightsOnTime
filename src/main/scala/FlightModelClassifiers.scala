@@ -1,29 +1,28 @@
-import org.apache.spark.ml.{Pipeline, PipelineModel}
+import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage}
 import org.apache.spark.ml.classification.{DecisionTreeClassifier, RandomForestClassifier}
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.DataFrame
 
 class FlightDelayRandomForestClassifier(configuration: Configuration, modelName: String, modelPath: String)
-  extends FlightModel(configuration, modelName, modelPath) {
+  extends FlightModelClassifier(configuration, modelName, modelPath) {
 
-  override def fit(trainingData: DataFrame): FlightModel = {
-    val rf = new RandomForestClassifier()
+  override def getModel: PipelineStage = {
+    new RandomForestClassifier()
       .setMaxBins(10)
-      .setMaxDepth(15)
-      .setNumTrees(20)
+      .setMaxDepth(25)
+      .setNumTrees(25)
       .setImpurity("gini")
       .setLabelCol("delayed")
       .setFeaturesCol("features")
-    val pipeline = new Pipeline().setStages(Array(rf))
-    pipelineModel = pipeline.fit(trainingData)
-    this
   }
 
 }
 
 class FlightDelayCrossValidation(configuration: Configuration, modelName: String, modelPath: String)
-  extends FlightModel(configuration, modelName, modelPath) {
+  extends FlightModelClassifier(configuration, modelName, modelPath) {
+
+  override def getModel: PipelineStage = null
 
   override def fit(trainingData: DataFrame): FlightModel = {
     // create decision tree model
@@ -37,7 +36,7 @@ class FlightDelayCrossValidation(configuration: Configuration, modelName: String
       .setFeaturesCol("features")
 
     // configure an ML pipeline by adding the 2 models above
-    val pipeline = new Pipeline().setStages(Array(rf))
+    val pipeline = new Pipeline().setStages(Array(rf, dt))
 
     // use ParamGridBuilder to specify the parameters to search over and their range of values
     val paramGrid = new ParamGridBuilder()

@@ -16,10 +16,10 @@ object Main {
       // we define here the set of models we want to train or test (in production mode)
       val models = List[FlightModel](
         //new FlightDelayLogisticRegression(config, "Logistic Regression", "ml/lr.model"),
-        //new FlightDelayRandomForestClassifier(config, "Random Forest", "ml/rfc.model")
         //new FlightDelayLinearRegressor(config, "Linear Regressor", "ml/glr.model"),
         new FlightDelayRandomForestRegressor(config, "Random Forest Regressor", "ml/rfr.model"),
         //new FlightDelayGBTRegressor(config, "GBT Regressor", "ml/gbt.model"),
+        new FlightDelayRandomForestClassifier(config, "Random Forest Classifier", "ml/rfc.model")
         //, new FlightDelayDecisionTree(config, "Decision Tree", "ml/dt.model")
         //new FlightDelayCrossValidation(config, "Cross Validation", "ml/cv.model")
       )

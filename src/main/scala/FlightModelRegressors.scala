@@ -1,30 +1,25 @@
-import org.apache.spark.ml.Pipeline
+import org.apache.spark.ml.PipelineStage
 import org.apache.spark.ml.regression.{GBTRegressor, GeneralizedLinearRegression, RandomForestRegressor}
-import org.apache.spark.sql.DataFrame
 
 class FlightDelayRandomForestRegressor(configuration: Configuration, modelName: String, modelPath: String)
-  extends FlightModel(configuration, modelName, modelPath) {
+  extends FlightModelRegressor(configuration, modelName, modelPath) {
 
-  override def fit(trainingData: DataFrame): FlightModel = {
-    val rf = new RandomForestRegressor().setSeed(42L)
+  override def getModel: PipelineStage = {
+    new RandomForestRegressor().setSeed(42L)
       .setMaxBins(10)
       .setMaxDepth(25)
       .setNumTrees(25)
       .setImpurity("variance")
       .setLabelCol("delay")
       .setFeaturesCol("features")
-    val pipeline = new Pipeline().setStages(Array(rf))
-    pipelineModel = pipeline.fit(trainingData)
-    this
   }
-
 }
 
 class FlightDelayLinearRegressor(configuration: Configuration, modelName: String, modelPath: String)
-  extends FlightModel(configuration, modelName, modelPath) {
+  extends FlightModelRegressor(configuration, modelName, modelPath) {
 
-  override def fit(trainingData: DataFrame): FlightModel = {
-    val glr = new GeneralizedLinearRegression()
+  override def getModel: PipelineStage = {
+    new GeneralizedLinearRegression()
       .setFamily("gaussian")
       .setLink("identity")
       .setMaxIter(10000)
@@ -32,18 +27,14 @@ class FlightDelayLinearRegressor(configuration: Configuration, modelName: String
       .setTol(1e-17)
       .setLabelCol("delay")
       .setFeaturesCol("features")
-    val pipeline = new Pipeline().setStages(Array(glr))
-    pipelineModel = pipeline.fit(trainingData)
-    this
   }
 }
 
-
 class FlightDelayGBTRegressor(configuration: Configuration, modelName: String, modelPath: String)
-  extends FlightModel(configuration, modelName, modelPath) {
+  extends FlightModelRegressor(configuration, modelName, modelPath) {
 
-  override def fit(trainingData: DataFrame): FlightModel = {
-    val gbt = new GBTRegressor()
+  override def getModel: PipelineStage = {
+    new GBTRegressor()
       .setMaxIter(10)
       .setMaxBins(10)
       .setMaxDepth(10)
@@ -51,9 +42,6 @@ class FlightDelayGBTRegressor(configuration: Configuration, modelName: String, m
       .setLossType("squared")
       .setLabelCol("delay")
       .setFeaturesCol("features")
-    val pipeline = new Pipeline().setStages(Array(gbt))
-    pipelineModel = pipeline.fit(trainingData)
-    this
   }
 }
 

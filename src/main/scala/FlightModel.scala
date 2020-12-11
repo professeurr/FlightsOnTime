@@ -1,12 +1,10 @@
-import org.apache.spark.ml.PipelineModel
+import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage}
 import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.when
 
 abstract class FlightModel(configuration: Configuration, modelName: String, modelPath: String) {
-
-  import Utility.sparkSession.implicits._
 
   var pipelineModel: PipelineModel = _
 
@@ -16,8 +14,14 @@ abstract class FlightModel(configuration: Configuration, modelName: String, mode
   // name of the file where the pipeline is saved or loaded
   def pipelineFilename: String = modelPath
 
+  def getModel: PipelineStage
+
   // the fit function to be implemented by each concrete class
-  def fit(trainingData: DataFrame): FlightModel
+  def fit(trainingData: DataFrame): FlightModel = {
+    val pipeline = new Pipeline().setStages(Array(getModel))
+    pipelineModel = pipeline.fit(trainingData)
+    this
+  }
 
   // evaluate trained model on test dataset
   def evaluate(testData: DataFrame): DataFrame = {
@@ -32,22 +36,7 @@ abstract class FlightModel(configuration: Configuration, modelName: String, mode
   }
 
   def summarize(predictions: DataFrame): Unit = {
-    var predict = predictions
-    if (modelName.contains("Regressor")) {
-      predict = predict.withColumnRenamed("prediction", "delay_prediction")
-        .withColumn("delayed", when($"delay" > configuration.flightsDelayThreshold, 1.0).otherwise(0.0))
-        .withColumn("prediction", when($"delay_prediction" > configuration.flightsDelayThreshold, 1.0).otherwise(0.0))
-
-      //predict.select("delay", "delay_prediction", "delayed", "prediction").show(truncate = false)
-      val evaluator = new RegressionEvaluator()
-        .setLabelCol("delay")
-        .setPredictionCol("delay_prediction")
-        .setMetricName("rmse")
-      val rmse = evaluator.evaluate(predict)
-      Utility.log(s"Root Mean Squared Error (RMSE): $rmse")
-    }
-
-    val rdd = predict.select("prediction", "delayed").rdd.map(row => (row.getDouble(0), row.getDouble(1)))
+    val rdd = predictions.select("prediction", "delayed").rdd.map(row => (row.getDouble(0), row.getDouble(1)))
     val multiclassMetrics = new MulticlassMetrics(rdd)
     val binaryClassMetrics = new BinaryClassificationMetrics(rdd)
 
@@ -64,4 +53,39 @@ abstract class FlightModel(configuration: Configuration, modelName: String, mode
     Utility.log(s"$getName metrics\n\tThreshold        : ${configuration.flightsDelayThreshold}min\n$metricsDF")
   }
 
+}
+
+abstract class FlightModelClassifier(configuration: Configuration, modelName: String, modelPath: String)
+  extends FlightModel(configuration, modelName, modelPath) {
+
+  import Utility.sparkSession.implicits._
+
+  override def fit(trainingData: DataFrame): FlightModel = {
+    val data = trainingData.withColumn("delayed", when($"delay" > configuration.flightsDelayThreshold, 1.0).otherwise(0.0))
+    super.fit(data)
+  }
+}
+
+abstract class FlightModelRegressor(configuration: Configuration, modelName: String, modelPath: String)
+  extends FlightModel(configuration, modelName, modelPath) {
+
+  import Utility.sparkSession.implicits._
+
+  override def summarize(predictions: DataFrame): Unit = {
+    val predict = predictions.withColumnRenamed("prediction", "delay_prediction")
+      .withColumn("delayed", when($"delay" > configuration.flightsDelayThreshold, 1.0).otherwise(0.0))
+      .withColumn("prediction", when($"delay_prediction" > configuration.flightsDelayThreshold, 1.0).otherwise(0.0))
+
+//    predict.select("delay", "delay_prediction", "delayed", "prediction")
+//      .filter("delay_prediction < 0")
+//      .show(truncate = false)
+    val evaluator = new RegressionEvaluator()
+      .setLabelCol("delay")
+      .setPredictionCol("delay_prediction")
+      .setMetricName("rmse")
+    val rmse = evaluator.evaluate(predict)
+    Utility.log(s"Root Mean Squared Error (RMSE): $rmse")
+
+    super.summarize(predict)
+  }
 }
