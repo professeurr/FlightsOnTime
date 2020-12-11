@@ -123,6 +123,9 @@ object UdfUtility extends Serializable {
 
   val assembleVectors: UserDefinedFunction = udf((cond1: Seq[Double], cond2: Seq[Double]) => {
     Vectors.dense((cond1 ++ cond2).toArray)
+    //Vectors.dense((cond2).toArray)
+    //Vectors.dense((cond1).toArray)
+    //Vectors.dense(Array[Double]())
   })
 
   val skys: Array[String] = Array("SKC", "FEW", "SCT", "BKN", "OVC")
@@ -139,6 +142,12 @@ object UdfUtility extends Serializable {
 
   val parseSkyConditionUdf: UserDefinedFunction = udf((skyCond: String) => {
     parseSkyCondition(skyCond)
+  })
+  val parseSeasonUdf: UserDefinedFunction = udf((m: Int) => {
+    if (m >= 3 && m <= 5) 0
+    else if (m >= 6 && m <= 8) 1
+    else if (m >= 9 && m <= 11) 2
+    else 3
   })
 
   // SKC0200 SCT03011 BKN0400

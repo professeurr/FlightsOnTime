@@ -17,6 +17,7 @@ object Main {
       val models = List[FlightModel](
         //new FlightDelayLogisticRegression(config, "Logistic Regression", "ml/lr.model"),
         //new FlightDelayRandomForestClassifier(config, "Random Forest", "ml/rfc.model")
+        //new FlightDelayLinearRegressor(config, "Linear Regressor", "ml/glr.model"),
         new FlightDelayRandomForestRegressor(config, "Random Forest Regressor", "ml/rfr.model"),
         //new FlightDelayGBTRegressor(config, "GBT Regressor", "ml/gbt.model"),
         //, new FlightDelayDecisionTree(config, "Decision Tree", "ml/dt.model")
@@ -63,16 +64,16 @@ object Main {
     val stationsData = broadcast(Utility.readCsv(configuration.wbanAirportsPath)) // loading weather stations
 
     t1 = System.nanoTime()
-    Utility.log("extracting flights data...")
-    val flightData = Utility.readCsv(flightPaths: _*)
-    featuresExtractor.extractFlightsFeatures(flightData, stationsData) // loading flights data
-    Utility.log(s"[flightDataExtraction elapsed in: ${elapsed(t1)}]")
-
-    t1 = System.nanoTime()
     Utility.log("extracting weather data...")
     val weatherData = Utility.readCsv(weatherPaths: _*)
     featuresExtractor.extractWeatherFeatures(weatherData, stationsData) // loading weather data
     Utility.log(s"[weatherDataExtraction elapsed in: ${elapsed(t1)}]")
+
+    t1 = System.nanoTime()
+    Utility.log("extracting flights data...")
+    val flightData = Utility.readCsv(flightPaths: _*)
+    featuresExtractor.extractFlightsFeatures(flightData, stationsData) // loading flights data
+    Utility.log(s"[flightDataExtraction elapsed in: ${elapsed(t1)}]")
 
     Utility.log(s"[data featuring elapsed in: ${elapsed(t0)}]")
   }
@@ -97,7 +98,7 @@ object Main {
     val t0 = System.nanoTime()
 
     // split the dataset into training and testing set
-    var Array(trainingData, testData) = data.randomSplit(Array(0.70, 0.3), 42L)
+    var Array(trainingData, testData) = data.randomSplit(Array(0.75, 0.25), 42L)
     trainingData = trainingData.cache()
 
     models.foreach(model => {

@@ -9,7 +9,6 @@ case class Configuration(
                           var weatherTrainPath: Array[String],
                           var flightsTestPath: Array[String],
                           var weatherTestPath: Array[String],
-                          var persistPath: String,
                           var mlMode: String = "extract",
                           flightsDelayThreshold: Int = 15,
                           weatherTimeFrame: Int = 12,
@@ -18,6 +17,7 @@ case class Configuration(
 
   var flightsPath:Array[String] = _
   var weatherPath:Array[String] = _
+  var persistPath: String = _
   var partitions: Int = -1
   var executionModes: Array[String] = Array()
 
@@ -25,7 +25,7 @@ case class Configuration(
     executionModes = mlMode.trim.split(",").map(x => x.trim.toLowerCase())
     partitions = Utility.sparkSession.conf.get("spark.sql.shuffle.partitions").toInt
 
-    persistPath = rootPath + persistPath
+    persistPath = rootPath + "persist/"
     wbanAirportsPath = rootPath + wbanAirportsPath
 
     flightsTrainPath = flightsTrainPath.map(x => rootPath + x)

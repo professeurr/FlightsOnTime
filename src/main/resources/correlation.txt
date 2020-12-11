@@ -1,21 +1,49 @@
-== Physical Plan ==
-*(6) Filter isnotnull(ORIGIN_WEATHER_COND#4092)
-+- ObjectHashAggregate(keys=[FL_ID#3939L, FL_DEP_TIME#3940L], functions=[collect_list(WEATHER_TIME#4023L, 0, 0), collect_list(WEATHER_COND#4022, 0, 0)])
-   +- Exchange hashpartitioning(FL_ID#3939L, FL_DEP_TIME#3940L, 100), true, [id=#820]
-      +- ObjectHashAggregate(keys=[FL_ID#3939L, FL_DEP_TIME#3940L], functions=[partial_collect_list(WEATHER_TIME#4023L, 0, 0), partial_collect_list(WEATHER_COND#4022, 0, 0)])
-         +- *(5) Project [FL_ID#3939L, FL_DEP_TIME#3940L, WEATHER_COND#4022, WEATHER_TIME#4023L]
-            +- *(5) SortMergeJoin [ORIGIN_AIRPORT_ID#3938], [AIRPORTID#4021], Inner, ((WEATHER_TIME#4023L >= (FL_DEP_TIME#3940L - 43200)) AND (WEATHER_TIME#4023L <= FL_DEP_TIME#3940L))
-               :- *(2) Sort [ORIGIN_AIRPORT_ID#3938 ASC NULLS FIRST], false, 0
-               :  +- Exchange hashpartitioning(ORIGIN_AIRPORT_ID#3938, 100), true, [id=#803]
-               :     +- *(1) Filter (isnotnull(FL_DEP_TIME#3940L) AND isnotnull(ORIGIN_AIRPORT_ID#3938))
-               :        +- InMemoryTableScan [ORIGIN_AIRPORT_ID#3938, FL_ID#3939L, FL_DEP_TIME#3940L], [isnotnull(FL_DEP_TIME#3940L), isnotnull(ORIGIN_AIRPORT_ID#3938)]
-               :              +- InMemoryRelation [DEST_AIRPORT_ID#3937, ORIGIN_AIRPORT_ID#3938, FL_ID#3939L, FL_DEP_TIME#3940L, FL_ARR_TIME#3941L, DELAY#3942L, month#3943, FL_ONTIME#3944], StorageLevel(disk, memory, deserialized, 1 replicas)
-               :                    +- *(1) ColumnarToRow
-               :                       +- BatchScan[DEST_AIRPORT_ID#3937, ORIGIN_AIRPORT_ID#3938, FL_ID#3939L, FL_DEP_TIME#3940L, FL_ARR_TIME#3941L, DELAY#3942L, month#3943, FL_ONTIME#3944] ParquetScan Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/workspace/per..., ReadSchema: struct<DEST_AIRPORT_ID:string,ORIGIN_AIRPORT_ID:string,FL_ID:bigint,FL_DEP_TIME:bigint,FL_ARR_TIM..., PushedFilters: []
-               +- *(4) Sort [AIRPORTID#4021 ASC NULLS FIRST], false, 0
-                  +- Exchange hashpartitioning(AIRPORTID#4021, 100), true, [id=#811]
-                     +- *(3) Filter (isnotnull(WEATHER_TIME#4023L) AND isnotnull(AIRPORTID#4021))
-                        +- InMemoryTableScan [AIRPORTID#4021, WEATHER_COND#4022, WEATHER_TIME#4023L], [isnotnull(WEATHER_TIME#4023L), isnotnull(AIRPORTID#4021)]
-                              +- InMemoryRelation [AIRPORTID#4021, WEATHER_COND#4022, WEATHER_TIME#4023L], StorageLevel(disk, memory, deserialized, 1 replicas)
-                                    +- *(1) Project [AIRPORTID#4021, WEATHER_COND#4022, WEATHER_TIME#4023L]
-                                       +- BatchScan[AIRPORTID#4021, WEATHER_COND#4022, WEATHER_TIME#4023L] ParquetScan Location: InMemoryFileIndex[file:/home/masterai/dev/master_iasd/bigdata/project/flightsontime/workspace/per..., ReadSchema: struct<AIRPORTID:string,WEATHER_COND:struct<type:tinyint,size:int,indices:array<int>,values:array..., PushedFilters: []
+data over 1 year
+
+    20/12/10 23:46:51 INFO $: Performance of the model Random Forest Regressor on training data...
+    20/12/10 23:47:38 INFO $: Root Mean Squared Error (RMSE): 14.885792918119694
+    20/12/10 23:47:51 INFO $: Random Forest Regressor metrics
+            Threshold        : 15min
+            Accuracy         : 90%
+            Area Under ROC   : 90%
+            Delayed Recall   : 89%
+            Delayed Precision: 91%
+            OnTime Recall    : 91%
+            OnTime Precision : 89%
+    20/12/10 23:47:51 INFO $: Evaluating the model Random Forest Regressor on test data...
+    20/12/10 23:49:01 INFO $: Performance of the model Random Forest Regressor on test data...
+    20/12/10 23:49:44 INFO $: Root Mean Squared Error (RMSE): 33.85328547348725
+    20/12/10 23:50:23 INFO $: Random Forest Regressor metrics
+            Threshold        : 15min
+            Accuracy         : 70%
+            Area Under ROC   : 70%
+            Delayed Recall   : 81%
+            Delayed Precision: 66%
+            OnTime Recall    : 59%
+            OnTime Precision : 76%
+
+
+    20/12/10 21:17:24 INFO $: Performance of the model Random Forest Regressor on training data...
+    20/12/10 21:17:30 INFO $: Root Mean Squared Error (RMSE): 24.552206266498988
+    20/12/10 21:17:32 INFO $: Random Forest Regressor metrics
+            Threshold        : 60min
+            Accuracy         : 97%
+            Area Under ROC   : 97%
+            Delayed Recall   : 94%
+            Delayed Precision: 99%
+            OnTime Recall    : 99%
+            OnTime Precision : 94%
+    20/12/10 21:17:32 INFO $: Evaluating the model Random Forest Regressor on test data...
+    20/12/10 21:17:45 INFO $: Performance of the model Random Forest Regressor on test data...
+    20/12/10 21:17:52 INFO $: Root Mean Squared Error (RMSE): 59.546627940331696
+    20/12/10 21:17:55 INFO $: Random Forest Regressor metrics
+            Threshold        : 60min
+            Accuracy         : 82%
+            Area Under ROC   : 82%
+            Delayed Recall   : 82%
+            Delayed Precision: 81%
+            OnTime Recall    : 81%
+            OnTime Precision : 82%
+
+
+data ver 2 years
