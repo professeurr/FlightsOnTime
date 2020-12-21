@@ -7,8 +7,8 @@ class FlightDelayRandomForestRegressor(configuration: Configuration, modelName: 
   override def getModel: PipelineStage = {
     new RandomForestRegressor().setSeed(42L)
       .setMaxBins(10)
-      .setMaxDepth(25)
-      .setNumTrees(25)
+      .setMaxDepth(15)
+      .setNumTrees(10)
       .setImpurity("variance")
       .setLabelCol("delay")
       .setFeaturesCol("features")

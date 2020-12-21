@@ -3,20 +3,16 @@
   "root_path": "file:///home/masterai/dev/master_iasd/bigdata/project/flightsontime/workspace/",
   "wban_airports_path": "data/wban_airport_timezone.csv",
   "flights_train_path": [
-    "data/flights/2013*"
+    "data/flights/201301*"
   ],
   "weather_train_path": [
-    "data/weather/2013*"
+    "data/weather/201301*"
   ],
   "flights_test_path": [
-    "data/flights/201401*",
-    "data/flights/201403*",
-    "data/flights/201407*"
+    "data/flights/201401*"
   ],
   "weather_test_path": [
-    "data/weather/201401*",
-    "data/weather/201403*",
-    "data/weather/201407*"
+    "data/weather/201401*"
   ],
   "features": -1,
   "flights_delay_threshold": 15,

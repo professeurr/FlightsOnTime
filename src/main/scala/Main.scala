@@ -85,7 +85,7 @@ object Main {
     val dataLoader = new DataTransformer(configuration)
     val flightDataDep = Utility.readParquet(root + "/flights.dep")
     val flightDataArr = Utility.readParquet(root + "/flights.arr")
-    val weatherData = Utility.readParquet(root + "/weather")
+    val weatherData = Utility.readParquet(root + "/weather").cache()
     val data = dataLoader.joinData(flightDataDep, flightDataArr, weatherData)
 
     Utility.log(s"[data transformation elapsed in: ${elapsed(t0)}]")
