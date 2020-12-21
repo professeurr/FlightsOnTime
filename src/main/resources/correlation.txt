@@ -1,9 +1,49 @@
-Pearson correlation matrix:
-1.0                     1.248234680166593E-16    1.3732234927256264E-16  -9.590575729574532E-16  9.04752306981681E-16     -4.334279831206711E-16  2.501782374078344E-16    -2.320077126354665E-17   
-1.248234680166593E-16   1.0                      8.096686975872777E-16   -7.421280428327923E-17  -2.3757859245912864E-16  2.122202118093868E-16   -3.7672338613173897E-16  -1.9333618698461153E-15  
-1.3732234927256264E-16  8.096686975872777E-16    1.0                     -2.154932693599405E-16  2.974812447065677E-16    5.984220517909831E-16   1.95285739055931E-16     1.5881345616370704E-15   
--9.590575729574532E-16  -7.421280428327923E-17   -2.154932693599405E-16  1.0                     1.2187881613124014E-15   -8.493081628158295E-17  -6.061744673825956E-16   1.3388133776609264E-16   
-9.04752306981681E-16    -2.3757859245912864E-16  2.974812447065677E-16   1.2187881613124014E-15  1.0                      6.503053501899828E-16   -1.3917531838256139E-15  -1.6112860084345055E-15  
--4.334279831206711E-16  2.122202118093868E-16    5.984220517909831E-16   -8.493081628158295E-17  6.503053501899828E-16    1.0                     -3.060356601826165E-16   2.2201857728215304E-16   
-2.501782374078344E-16   -3.7672338613173897E-16  1.95285739055931E-16    -6.061744673825956E-16  -1.3917531838256139E-15  -3.060356601826165E-16  1.0                      -6.829531735252968E-15   
--2.320077126354665E-17  -1.9333618698461153E-15  1.5881345616370704E-15  1.3388133776609264E-16  -1.6112860084345055E-15  2.2201857728215304E-16  -6.829531735252968E-15   1.0     
+data over 1 year
+
+    20/12/10 23:46:51 INFO $: Performance of the model Random Forest Regressor on training data...
+    20/12/10 23:47:38 INFO $: Root Mean Squared Error (RMSE): 14.885792918119694
+    20/12/10 23:47:51 INFO $: Random Forest Regressor metrics
+            Threshold        : 15min
+            Accuracy         : 90%
+            Area Under ROC   : 90%
+            Delayed Recall   : 89%
+            Delayed Precision: 91%
+            OnTime Recall    : 91%
+            OnTime Precision : 89%
+    20/12/10 23:47:51 INFO $: Evaluating the model Random Forest Regressor on test data...
+    20/12/10 23:49:01 INFO $: Performance of the model Random Forest Regressor on test data...
+    20/12/10 23:49:44 INFO $: Root Mean Squared Error (RMSE): 33.85328547348725
+    20/12/10 23:50:23 INFO $: Random Forest Regressor metrics
+            Threshold        : 15min
+            Accuracy         : 70%
+            Area Under ROC   : 70%
+            Delayed Recall   : 81%
+            Delayed Precision: 66%
+            OnTime Recall    : 59%
+            OnTime Precision : 76%
+
+
+    20/12/10 21:17:24 INFO $: Performance of the model Random Forest Regressor on training data...
+    20/12/10 21:17:30 INFO $: Root Mean Squared Error (RMSE): 24.552206266498988
+    20/12/10 21:17:32 INFO $: Random Forest Regressor metrics
+            Threshold        : 60min
+            Accuracy         : 97%
+            Area Under ROC   : 97%
+            Delayed Recall   : 94%
+            Delayed Precision: 99%
+            OnTime Recall    : 99%
+            OnTime Precision : 94%
+    20/12/10 21:17:32 INFO $: Evaluating the model Random Forest Regressor on test data...
+    20/12/10 21:17:45 INFO $: Performance of the model Random Forest Regressor on test data...
+    20/12/10 21:17:52 INFO $: Root Mean Squared Error (RMSE): 59.546627940331696
+    20/12/10 21:17:55 INFO $: Random Forest Regressor metrics
+            Threshold        : 60min
+            Accuracy         : 82%
+            Area Under ROC   : 82%
+            Delayed Recall   : 82%
+            Delayed Precision: 81%
+            OnTime Recall    : 81%
+            OnTime Precision : 82%
+
+
+data ver 2 years

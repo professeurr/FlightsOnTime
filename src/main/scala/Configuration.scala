@@ -5,13 +5,10 @@ case class Configuration(
                           features: Int = 8,
                           rootPath: String = "./",
                           var wbanAirportsPath: String,
-                          var flightsDataPath: Array[String],
-                          var weatherDataPath: Array[String],
-                          var flightsExtractPath: Array[String],
-                          var weatherExtractPath: Array[String],
+                          var flightsTrainPath: Array[String],
+                          var weatherTrainPath: Array[String],
                           var flightsTestPath: Array[String],
                           var weatherTestPath: Array[String],
-                          var persistPath: String,
                           var mlMode: String = "extract",
                           flightsDelayThreshold: Int = 15,
                           weatherTimeFrame: Int = 12,
@@ -20,6 +17,7 @@ case class Configuration(
 
   var flightsPath:Array[String] = _
   var weatherPath:Array[String] = _
+  var persistPath: String = _
   var partitions: Int = -1
   var executionModes: Array[String] = Array()
 
@@ -27,14 +25,11 @@ case class Configuration(
     executionModes = mlMode.trim.split(",").map(x => x.trim.toLowerCase())
     partitions = Utility.sparkSession.conf.get("spark.sql.shuffle.partitions").toInt
 
-    persistPath = rootPath + persistPath
+    persistPath = rootPath + "persist/"
     wbanAirportsPath = rootPath + wbanAirportsPath
 
-    flightsDataPath = flightsDataPath.map(x => rootPath + x)
-    weatherDataPath = weatherDataPath.map(x => rootPath + x)
-
-    flightsExtractPath = flightsExtractPath.map(x => persistPath + "extract/" + x)
-    weatherExtractPath = weatherExtractPath.map(x => persistPath + "extract/" + x)
+    flightsTrainPath = flightsTrainPath.map(x => rootPath + x)
+    weatherTrainPath = weatherTrainPath.map(x => rootPath + x)
 
     flightsTestPath = flightsTestPath.map(x => rootPath + x)
     weatherTestPath = weatherTestPath.map(x => rootPath + x)
